@@ -131,7 +131,10 @@ public sealed class MainForm : Form
             Text = "Marco",
             Visible = true,
         };
-        _bandeja.DoubleClick += (_, _) => MostrarDesdeBandeja();
+        _bandeja.MouseClick += (_, e) =>
+        {
+            if (e.Button == MouseButtons.Left) MostrarDesdeBandeja();
+        };
         RehacerMenuBandeja();
 
         // Watcher: aplica borderless solo a los juegos de la biblioteca según arrancan
@@ -411,11 +414,11 @@ public sealed class MainForm : Form
     private static readonly string[] PixelesIcono =
     {
         "................",
-        "...........DDD..",
-        ".............D..",
-        "..DDDDDDDDD.....",
-        "..DGGGGGGGGD....",
-        "..DGWWGGGGGGD...",
+        "................",
+        "................",
+        "..DDDDDDDDDDDD..",
+        "..DGGGGGGGGGGD..",
+        "..DGWWGGGGGGGD..",
         "..DGWGGGGGGGGD..",
         "..DGGGGGGGGGGD..",
         "..DGGGGGGGGGGD..",
