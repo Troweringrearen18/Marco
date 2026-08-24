@@ -34,11 +34,12 @@ public sealed class MainForm : Form
     private Color _fondo, _texto, _textoSuave, _panel, _textoPanel, _seleccion, _acento;
     private Font _fuenteNegrita = null!, _fuentePequena = null!;
 
-    public MainForm()
+    public MainForm(bool arrancoBandeja = false)
     {
         _config = ConfigStore.Cargar();
         Textos.Idioma = string.IsNullOrEmpty(_config.Idioma) ? "en" : _config.Idioma;
-        _iniciarOculto = _config.ArrancarMinimizado;
+        // Minimizado solo cuando lo lanza el autoarranque de Windows (--bandeja)
+        _iniciarOculto = arrancoBandeja && _config.ArrancarMinimizado;
 
         Text = "Marco";
         StartPosition = FormStartPosition.CenterScreen;
@@ -434,7 +435,7 @@ public sealed class MainForm : Form
         {
             using var run = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(clave, writable: true);
             if (activar)
-                run?.SetValue("Marco", $"\"{Application.ExecutablePath}\"");
+                run?.SetValue("Marco", $"\"{Application.ExecutablePath}\" --bandeja");
             else
                 run?.DeleteValue("Marco", throwOnMissingValue: false);
             run?.DeleteValue("SinBordes", throwOnMissingValue: false); // entrada del nombre antiguo

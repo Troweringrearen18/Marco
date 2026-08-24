@@ -33,7 +33,9 @@ static class Program
             return 0;
         }
 
-        Application.Run(new MainForm());
+        // --bandeja lo pasa solo la entrada de autoarranque: un doble clic manual
+        // siempre abre la ventana aunque "arrancar minimizado" esté activo
+        Application.Run(new MainForm(args.Contains("--bandeja")));
         return 0;
     }
 
