@@ -16,6 +16,7 @@ public sealed class MainForm : Form
     private readonly BotonRedondeado _botonFavorito;
     private readonly BotonRedondeado _botonActualizar;
     private readonly BotonRedondeado _botonAjustes;
+    private readonly TableLayoutPanel _panelAjustes;
     private readonly Panel _marcoLista;
     private readonly NotifyIcon _bandeja;
     private readonly System.Windows.Forms.Timer _watcher;
@@ -49,6 +50,8 @@ public sealed class MainForm : Form
         FormClosing += (_, _) =>
         {
             var tam = WindowState == FormWindowState.Normal ? ClientSize : RestoreBounds.Size;
+            // No memorizar el alto extra del panel de ajustes desplegado
+            if (_panelAjustes?.Visible == true) tam = new Size(tam.Width, tam.Height - _panelAjustes.Height);
             _config.VentanaAncho = tam.Width;
             _config.VentanaAlto = tam.Height;
             ConfigStore.Guardar(_config);
@@ -95,7 +98,7 @@ public sealed class MainForm : Form
         _botonAccion = Boton(Textos.T("boton.aplicar"), AccionPrincipal);
         _botonFavorito = Boton(Textos.T("boton.guardar"), AlternarFavorito);
         _botonActualizar = Boton(Textos.T("boton.actualizar"), Refrescar);
-        _botonAjustes = Boton(Textos.T("boton.ajustes"), MenuAjustes);
+        _botonAjustes = Boton(Textos.T("boton.ajustes"), AlternarAjustes);
         _botones.Controls.Add(_botonAccion);
         _botones.Controls.Add(_botonFavorito);
         _botones.Controls.Add(_botonActualizar);
@@ -138,8 +141,22 @@ public sealed class MainForm : Form
         _marcoLista = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, 4, 0, 4) };
         _marcoLista.Controls.Add(_lista);
 
+        // Panel de ajustes integrado: se despliega bajo los botones, con el tema de la app
+        // (el ContextMenuStrip del sistema rompía la estética)
+        _panelAjustes = new TableLayoutPanel
+        {
+            Dock = DockStyle.Bottom,
+            AutoSize = true,
+            ColumnCount = 1,
+            Padding = new Padding(10, 4, 10, 8),
+            Visible = false,
+        };
+        _panelAjustes.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
+        // Orden de docking: barra (fondo), panel de ajustes encima, botones encima del panel
         Controls.Add(_marcoLista);
         Controls.Add(_botones);
+        Controls.Add(_panelAjustes);
         Controls.Add(_barra);
         Controls.Add(_barraTitulo);
         _marcoLista.BringToFront();
@@ -215,6 +232,7 @@ public sealed class MainForm : Form
         _botonActualizar.Text = Textos.T("boton.actualizar");
         _botonAjustes.Text = Textos.T("boton.ajustes");
         RehacerMenuBandeja();
+        ReconstruirAjustes();
         Refrescar(); // botones contextuales, barra de estado y filas
     }
 
@@ -490,6 +508,7 @@ public sealed class MainForm : Form
             boton.Borde = Mezclar(_panel, panelOscuro ? Color.White : Color.Black, 0.28f);
         }
 
+        ReconstruirAjustes();
         Invalidate(true);
         _lista.Invalidate();
     }
@@ -576,17 +595,41 @@ public sealed class MainForm : Form
         return camino;
     }
 
-    private void MenuAjustes()
+    private void AlternarAjustes()
     {
-        var menu = new ContextMenuStrip();
+        if (!_panelAjustes.Visible)
+        {
+            _panelAjustes.Visible = true;
+            Height += _panelAjustes.Height; // que los ajustes no se coman la lista
+        }
+        else
+        {
+            Height -= _panelAjustes.Height;
+            _panelAjustes.Visible = false;
+        }
+    }
 
-        var colores = new ToolStripMenuItem(Textos.T("menu.colores"));
-        colores.DropDownItems.Add(Textos.T("menu.fondo"), null, (_, _) => ElegirColor(c => _config.ColorFondo = c, _fondo));
-        colores.DropDownItems.Add(Textos.T("menu.panel"), null, (_, _) => ElegirColor(c => _config.ColorPanel = c, _panel));
-        colores.DropDownItems.Add(Textos.T("menu.acento"), null, (_, _) => ElegirColor(c => _config.ColorAcento = c, _acento));
-        colores.DropDownItems.Add(Textos.T("menu.texto"), null, (_, _) => ElegirColor(c => _config.ColorTexto = c, _texto));
-        colores.DropDownItems.Add(new ToolStripSeparator());
-        colores.DropDownItems.Add(Textos.T("menu.restablecer"), null, (_, _) =>
+    private void ReconstruirAjustes()
+    {
+        _panelAjustes.SuspendLayout();
+        _panelAjustes.Controls.Clear();
+        _panelAjustes.BackColor = _fondo;
+
+        // Colores: muestras clicables con el color actual + restablecer
+        var muestras = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink, // sin esto el alto se clava en 100px
+            WrapContents = false,
+            Margin = new Padding(0),
+            BackColor = Color.Transparent,
+        };
+        muestras.Controls.Add(Muestra(_fondo, c => _config.ColorFondo = c));
+        muestras.Controls.Add(Muestra(_panel, c => _config.ColorPanel = c));
+        muestras.Controls.Add(Muestra(_acento, c => _config.ColorAcento = c));
+        muestras.Controls.Add(Muestra(_texto, c => _config.ColorTexto = c));
+        var restablecer = BotonChico(Textos.T("menu.restablecer"));
+        restablecer.Click += (_, _) =>
         {
             var defecto = new Config();
             _config.ColorFondo = defecto.ColorFondo;
@@ -596,58 +639,152 @@ public sealed class MainForm : Form
             ConfigStore.Guardar(_config);
             AplicarTema();
             _estado.Text = Textos.T("estado.coloresDefecto");
-        });
-        menu.Items.Add(colores);
+        };
+        muestras.Controls.Add(restablecer);
+        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.colores"), muestras));
 
-        var idioma = new ToolStripMenuItem(Textos.T("menu.idioma"));
-        foreach (var (codigo, nombre) in Textos.Disponibles)
+        // Idioma: chips compactos
+        var chips = new FlowLayoutPanel
         {
-            var opcion = new ToolStripMenuItem(nombre) { Checked = Textos.Idioma == codigo };
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Margin = new Padding(0),
+            BackColor = Color.Transparent,
+        };
+        foreach (var (codigo, _) in Textos.Disponibles)
+        {
+            var chip = BotonChico(codigo.ToUpperInvariant());
+            if (codigo == Textos.Idioma)
+            {
+                chip.Borde = _acento;
+                chip.ForeColor = Mezclar(_acento, _texto, 0.25f);
+            }
             string elegido = codigo;
-            opcion.Click += (_, _) => CambiarIdioma(elegido);
-            idioma.DropDownItems.Add(opcion);
+            chip.Click += (_, _) => CambiarIdioma(elegido);
+            chips.Controls.Add(chip);
         }
-        menu.Items.Add(idioma);
+        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.idioma"), chips));
 
-        var redondeo = new ToolStripMenuItem(Textos.T("menu.esquinas"))
-        {
-            Checked = _config.BordesRedondeados,
-            CheckOnClick = true,
-        };
-        redondeo.CheckedChanged += (_, _) =>
-        {
-            _config.BordesRedondeados = redondeo.Checked;
-            ConfigStore.Guardar(_config);
-            AplicarTema();
-        };
-        menu.Items.Add(redondeo);
+        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.esquinas"),
+            Palanca(_config.BordesRedondeados, v =>
+            {
+                _config.BordesRedondeados = v;
+                ConfigStore.Guardar(_config);
+                AplicarTema();
+            })));
+        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.autoarranque"),
+            Palanca(_config.IniciarConWindows, v =>
+            {
+                _config.IniciarConWindows = v;
+                ConfigurarAutoarranque(v);
+                ConfigStore.Guardar(_config);
+            })));
+        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.arrancarMin"),
+            Palanca(_config.ArrancarMinimizado, v =>
+            {
+                _config.ArrancarMinimizado = v;
+                ConfigStore.Guardar(_config);
+            })));
+        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.cerrarMin"),
+            Palanca(_config.CerrarMinimiza, v =>
+            {
+                _config.CerrarMinimiza = v;
+                ConfigStore.Guardar(_config);
+            })));
 
-        menu.Items.Add(Alternador(Textos.T("menu.autoarranque"), _config.IniciarConWindows, valor =>
-        {
-            _config.IniciarConWindows = valor;
-            ConfigurarAutoarranque(valor);
-        }));
-        menu.Items.Add(Alternador(Textos.T("menu.arrancarMin"), _config.ArrancarMinimizado,
-            valor => _config.ArrancarMinimizado = valor));
-        menu.Items.Add(Alternador(Textos.T("menu.cerrarMin"), _config.CerrarMinimiza,
-            valor => _config.CerrarMinimiza = valor));
+        var enviar = BotonChico(Textos.T("boton.enviar"));
+        enviar.Click += (_, _) => EnviarAltIntro();
+        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.altintro"), enviar));
+        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.hotkey"),
+            new Label { AutoSize = true, Text = "" }, suave: true));
 
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(Textos.T("menu.altintro"), null, (_, _) => EnviarAltIntro());
-        menu.Items.Add(new ToolStripMenuItem(Textos.T("menu.hotkey")) { Enabled = false });
-
-        menu.Show(Cursor.Position);
+        _panelAjustes.ResumeLayout();
     }
 
-    private ToolStripMenuItem Alternador(string texto, bool valor, Action<bool> asignar)
+    // Fila de ajuste estilo LS: etiqueta a la izquierda, control alineado a la derecha
+    private Panel FilaAjuste(string etiqueta, Control control, bool suave = false)
     {
-        var opcion = new ToolStripMenuItem(texto) { Checked = valor, CheckOnClick = true };
-        opcion.CheckedChanged += (_, _) =>
+        var fila = new Panel
         {
-            asignar(opcion.Checked);
-            ConfigStore.Guardar(_config);
+            Height = 32,
+            Margin = new Padding(0, 1, 0, 1),
+            Anchor = AnchorStyles.Left | AnchorStyles.Right,
+            BackColor = Color.Transparent,
         };
-        return opcion;
+        var texto = new Label
+        {
+            Text = etiqueta,
+            AutoSize = true,
+            ForeColor = suave ? _textoSuave : _texto,
+            BackColor = Color.Transparent,
+        };
+        fila.Controls.Add(texto);
+        fila.Controls.Add(control);
+        void Colocar()
+        {
+            texto.Location = new Point(0, (fila.Height - texto.Height) / 2);
+            control.Location = new Point(Math.Max(texto.Right + 8, fila.Width - control.Width),
+                (fila.Height - control.Height) / 2);
+        }
+        fila.Resize += (_, _) => Colocar();
+        control.Resize += (_, _) => Colocar();
+        Colocar();
+        return fila;
+    }
+
+    private BotonRedondeado BotonChico(string texto)
+    {
+        bool panelOscuro = _panel.GetBrightness() < 0.5f;
+        var boton = new BotonRedondeado
+        {
+            Text = texto,
+            AutoSize = true,
+            Padding = new Padding(6, 2, 6, 2),
+            Margin = new Padding(3, 0, 3, 0),
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand,
+            Font = _fuentePequena,
+            BackColor = _panel,
+            ForeColor = _textoPanel,
+            Radio = _config.BordesRedondeados ? 6 : 0,
+            Borde = Mezclar(_panel, panelOscuro ? Color.White : Color.Black, 0.28f),
+        };
+        boton.FlatAppearance.BorderSize = 0;
+        boton.FlatAppearance.MouseOverBackColor =
+            Mezclar(_panel, panelOscuro ? Color.White : Color.Black, 0.12f);
+        return boton;
+    }
+
+    private BotonRedondeado Muestra(Color color, Action<string> asignar)
+    {
+        var boton = new BotonRedondeado
+        {
+            Size = new Size(34, 24),
+            Margin = new Padding(3, 0, 3, 0),
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand,
+            BackColor = color,
+            Radio = _config.BordesRedondeados ? 6 : 0,
+            Borde = Mezclar(color, color.GetBrightness() < 0.5f ? Color.White : Color.Black, 0.35f),
+        };
+        boton.FlatAppearance.BorderSize = 0;
+        boton.FlatAppearance.MouseOverBackColor = color;
+        boton.Click += (_, _) => ElegirColor(asignar, color);
+        return boton;
+    }
+
+    private Interruptor Palanca(bool valor, Action<bool> asignar)
+    {
+        var palanca = new Interruptor
+        {
+            Encendido = valor,
+            ColorEncendido = _acento,
+            ColorApagado = Mezclar(_panel, _texto, 0.18f),
+            Margin = new Padding(0),
+        };
+        palanca.Cambiado += asignar;
+        return palanca;
     }
 
     private void ElegirColor(Action<string> asignar, Color actual)
@@ -751,6 +888,46 @@ public sealed class MainForm : Form
             }
             TextRenderer.DrawText(g, Text, Font, zona, ForeColor,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        }
+    }
+
+    // Interruptor de palanca estilo LS: pista redondeada + bola, pintado con antialias
+    private sealed class Interruptor : Control
+    {
+        public bool Encendido;
+        public Color ColorEncendido = Color.MediumSlateBlue;
+        public Color ColorApagado = Color.Gray;
+        public event Action<bool>? Cambiado;
+
+        public Interruptor()
+        {
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
+                     ControlStyles.OptimizedDoubleBuffer, true);
+            Size = new Size(44, 22);
+            Cursor = Cursors.Hand;
+        }
+
+        protected override void OnClick(EventArgs e)
+        {
+            Encendido = !Encendido;
+            Invalidate();
+            Cambiado?.Invoke(Encendido);
+            base.OnClick(e);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.Clear(Parent?.BackColor ?? BackColor);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var pista = new Rectangle(0, 0, Width - 1, Height - 1);
+            using var camino = CaminoRedondeado(pista, Height / 2);
+            using var fondo = new SolidBrush(Encendido ? ColorEncendido : ColorApagado);
+            g.FillPath(fondo, camino);
+            int d = Height - 7;
+            int x = Encendido ? Width - d - 4 : 3;
+            using var bola = new SolidBrush(Color.White);
+            g.FillEllipse(bola, x, 3, d, d);
         }
     }
 
