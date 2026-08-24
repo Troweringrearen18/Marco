@@ -386,17 +386,21 @@ public sealed class MainForm : Form
         }
     }
 
+    // Fondo morado + "pantalla": rectángulo horizontal con borde oscuro y gris dentro
     private static Icon CrearIcono()
     {
         using var bmp = new Bitmap(32, 32);
         using (var g = Graphics.FromImage(bmp))
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            using var fondo = new SolidBrush(Color.FromArgb(233, 30, 99));
+            using var fondo = new SolidBrush(Color.FromArgb(122, 74, 214));
             using var camino = CaminoRedondeado(new Rectangle(1, 1, 29, 29), 8);
             g.FillPath(fondo, camino);
-            using var pluma = new Pen(Color.White, 3f);
-            g.DrawRectangle(pluma, 9, 9, 13, 13);
+            var pantalla = new Rectangle(6, 10, 20, 12);
+            using var relleno = new SolidBrush(Color.FromArgb(201, 201, 206));
+            g.FillRectangle(relleno, pantalla);
+            using var pluma = new Pen(Color.FromArgb(30, 27, 38), 2f);
+            g.DrawRectangle(pluma, pantalla);
         }
         return Icon.FromHandle(bmp.GetHicon());
     }

@@ -9,6 +9,8 @@
     <!-- Imprescindible: sin PerMonitorV2, con escalado 125/150% las coordenadas
          del monitor llegan virtualizadas y la ventana no cubre la pantalla -->
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <!-- Icono del exe (Explorer/barra de tareas); regenerable con el script de scratchpad -->
+    <ApplicationIcon>icono.ico</ApplicationIcon>
   </PropertyGroup>
 
 </Project>
