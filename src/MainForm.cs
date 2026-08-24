@@ -7,7 +7,7 @@ public sealed class MainForm : Form
 {
     private readonly ListaSuave _lista;
     private readonly ToolStripStatusLabel _estado;
-    private readonly ToolTip _tooltip = new();
+    private readonly DesplegableIdiomas _desplegableIdiomas;
     private readonly StatusStrip _barra;
     private readonly FlowLayoutPanel _botones;
     private readonly Panel _barraTitulo;
@@ -154,12 +154,16 @@ public sealed class MainForm : Form
         };
         _panelAjustes.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
+        _desplegableIdiomas = new DesplegableIdiomas(this);
+        _desplegableIdiomas.Elegido += CambiarIdioma;
+
         // Orden de docking: barra (fondo), panel de ajustes encima, botones encima del panel
         Controls.Add(_marcoLista);
         Controls.Add(_botones);
         Controls.Add(_panelAjustes);
         Controls.Add(_barra);
         Controls.Add(_barraTitulo);
+        Controls.Add(_desplegableIdiomas);
         _marcoLista.BringToFront();
 
         AplicarTema();
@@ -653,32 +657,13 @@ public sealed class MainForm : Form
         muestras.Controls.Add(restablecer);
         _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.colores"), muestras));
 
-        // Idioma: 30 chips con salto de línea; el nombre completo va en tooltip
-        var chips = new FlowLayoutPanel
-        {
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            WrapContents = true,
-            Margin = new Padding(0, 2, 0, 4),
-            Anchor = AnchorStyles.Left | AnchorStyles.Right,
-            BackColor = Color.Transparent,
-        };
+        // Idioma: una sola caja; al clicar se despliega la lista vertical (10 filas, rueda)
+        string nombreActual = "English";
         foreach (var (codigo, nombre) in Textos.Disponibles)
-        {
-            var chip = BotonChico(codigo.ToUpperInvariant());
-            chip.Margin = new Padding(2);
-            _tooltip.SetToolTip(chip, nombre);
-            if (codigo == Textos.Idioma)
-            {
-                chip.Borde = _acento;
-                chip.ForeColor = Mezclar(_acento, _texto, 0.25f);
-            }
-            string elegido = codigo;
-            chip.Click += (_, _) => CambiarIdioma(elegido);
-            chips.Controls.Add(chip);
-        }
-        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.idioma"), new Label { AutoSize = true, Text = "" }));
-        _panelAjustes.Controls.Add(chips);
+            if (codigo == Textos.Idioma) { nombreActual = nombre; break; }
+        var idiomaBoton = BotonChico(nombreActual + "  ▾");
+        idiomaBoton.Click += (_, _) => MostrarIdiomas(idiomaBoton);
+        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.idioma"), idiomaBoton));
 
         _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.esquinas"),
             Palanca(_config.BordesRedondeados, v =>
@@ -745,6 +730,21 @@ public sealed class MainForm : Form
         control.Resize += (_, _) => Colocar();
         Colocar();
         return fila;
+    }
+
+    private void MostrarIdiomas(Control ancla)
+    {
+        // Reabrir con el mismo clic que lo cerró (perdió el foco un instante antes): ignorar
+        if ((DateTime.Now - _desplegableIdiomas.UltimoCierre).TotalMilliseconds < 250) return;
+        var esquina = PointToClient(ancla.PointToScreen(Point.Empty));
+        int ancho = Math.Max(250, ancla.Width);
+        int x = Math.Clamp(esquina.X + ancla.Width - ancho, Padding.Left,
+            Math.Max(Padding.Left, ClientSize.Width - ancho - Padding.Right));
+        // Hacia arriba: la fila de idioma vive al fondo de la ventana
+        int y = esquina.Y - _desplegableIdiomas.Height - 4;
+        if (y < _barraTitulo.Bottom) y = esquina.Y + ancla.Height + 4;
+        _desplegableIdiomas.Width = ancho;
+        _desplegableIdiomas.Mostrar(new Point(x, y));
     }
 
     private BotonRedondeado BotonChico(string texto)
@@ -902,6 +902,126 @@ public sealed class MainForm : Form
             }
             TextRenderer.DrawText(g, Text, Font, zona, ForeColor,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        }
+    }
+
+    // Desplegable de idiomas propio: caja temática que abre una lista vertical de
+    // 10 filas visibles con scroll de rueda; se cierra al elegir o al perder el foco
+    private sealed class DesplegableIdiomas : Control
+    {
+        private const int AltoFila = 28;
+        private const int Visibles = 10;
+
+        private readonly MainForm _dueno;
+        private float _scroll;
+        private int _hover = -1;
+
+        public DateTime UltimoCierre;
+        public event Action<string>? Elegido;
+
+        public DesplegableIdiomas(MainForm dueno)
+        {
+            _dueno = dueno;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.Selectable, true);
+            Size = new Size(250, AltoFila * Visibles + 8);
+            Visible = false;
+        }
+
+        public void Mostrar(Point posicion)
+        {
+            Location = posicion;
+            int actual = 0;
+            for (int i = 0; i < Textos.Disponibles.Length; i++)
+                if (Textos.Disponibles[i].Codigo == Textos.Idioma) { actual = i; break; }
+            _scroll = Math.Clamp(actual * AltoFila - Height / 2f + AltoFila / 2f, 0, MaxScroll);
+            _hover = -1;
+            Visible = true;
+            BringToFront();
+            Focus();
+            Invalidate();
+        }
+
+        private float MaxScroll => Math.Max(0, Textos.Disponibles.Length * AltoFila - (Height - 8));
+
+        protected override void OnLostFocus(EventArgs e)
+        {
+            base.OnLostFocus(e);
+            Visible = false;
+            UltimoCierre = DateTime.Now;
+        }
+
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            base.OnMouseWheel(e);
+            _scroll = Math.Clamp(_scroll - e.Delta / 120f * AltoFila * 2, 0, MaxScroll);
+            Invalidate();
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            int fila = (int)((e.Y - 4 + _scroll) / AltoFila);
+            if (fila != _hover)
+            {
+                _hover = fila;
+                Invalidate();
+            }
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            base.OnMouseLeave(e);
+            _hover = -1;
+            Invalidate();
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            int fila = (int)((e.Y - 4 + _scroll) / AltoFila);
+            if (fila >= 0 && fila < Textos.Disponibles.Length)
+            {
+                Visible = false;
+                UltimoCierre = DateTime.Now;
+                Elegido?.Invoke(Textos.Disponibles[fila].Codigo);
+            }
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.Clear(FondoEfectivo(this));
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var panel = _dueno._panel;
+            bool panelOscuro = panel.GetBrightness() < 0.5f;
+            var caja = new Rectangle(0, 0, Width - 1, Height - 1);
+            using var camino = CaminoRedondeado(caja, _dueno._config.BordesRedondeados ? 8 : 0);
+            using var fondo = new SolidBrush(panel);
+            g.FillPath(fondo, camino);
+            using var borde = new Pen(Mezclar(panel, panelOscuro ? Color.White : Color.Black, 0.28f));
+            g.DrawPath(borde, camino);
+            g.SetClip(camino);
+            var idiomas = Textos.Disponibles;
+            int primera = Math.Max(0, (int)(_scroll / AltoFila));
+            int ultima = Math.Min(idiomas.Length - 1, (int)((_scroll + Height) / AltoFila) + 1);
+            for (int i = primera; i <= ultima; i++)
+            {
+                int y = (int)(i * AltoFila - _scroll) + 4;
+                var zona = new Rectangle(4, y, Width - 8, AltoFila);
+                if (i == _hover)
+                {
+                    using var resaltado = new SolidBrush(
+                        Mezclar(_dueno._panel, panelOscuro ? Color.White : Color.Black, 0.10f));
+                    using var caminoFila = CaminoRedondeado(zona, 5);
+                    g.FillPath(resaltado, caminoFila);
+                }
+                TextRenderer.DrawText(g, idiomas[i].Nombre, Font,
+                    new Rectangle(zona.X + 10, zona.Y, zona.Width - 20, zona.Height),
+                    idiomas[i].Codigo == Textos.Idioma ? _dueno._acento : _dueno._textoPanel,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            }
+            g.ResetClip();
         }
     }
 
