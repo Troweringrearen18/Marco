@@ -7,6 +7,7 @@ public sealed class MainForm : Form
 {
     private readonly ListaSuave _lista;
     private readonly ToolStripStatusLabel _estado;
+    private readonly ToolTip _tooltip = new();
     private readonly StatusStrip _barra;
     private readonly FlowLayoutPanel _botones;
     private readonly Panel _barraTitulo;
@@ -652,18 +653,21 @@ public sealed class MainForm : Form
         muestras.Controls.Add(restablecer);
         _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.colores"), muestras));
 
-        // Idioma: chips compactos
+        // Idioma: 30 chips con salto de línea; el nombre completo va en tooltip
         var chips = new FlowLayoutPanel
         {
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            WrapContents = false,
-            Margin = new Padding(0),
+            WrapContents = true,
+            Margin = new Padding(0, 2, 0, 4),
+            Anchor = AnchorStyles.Left | AnchorStyles.Right,
             BackColor = Color.Transparent,
         };
-        foreach (var (codigo, _) in Textos.Disponibles)
+        foreach (var (codigo, nombre) in Textos.Disponibles)
         {
             var chip = BotonChico(codigo.ToUpperInvariant());
+            chip.Margin = new Padding(2);
+            _tooltip.SetToolTip(chip, nombre);
             if (codigo == Textos.Idioma)
             {
                 chip.Borde = _acento;
@@ -673,7 +677,8 @@ public sealed class MainForm : Form
             chip.Click += (_, _) => CambiarIdioma(elegido);
             chips.Controls.Add(chip);
         }
-        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.idioma"), chips));
+        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.idioma"), new Label { AutoSize = true, Text = "" }));
+        _panelAjustes.Controls.Add(chips);
 
         _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.esquinas"),
             Palanca(_config.BordesRedondeados, v =>
