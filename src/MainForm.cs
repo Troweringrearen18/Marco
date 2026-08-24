@@ -518,6 +518,15 @@ public sealed class MainForm : Form
         origen.G + (int)((destino.G - origen.G) * peso),
         origen.B + (int)((destino.B - origen.B) * peso));
 
+    // Fondo real tras un control: Clear(Transparent) pinta negro, así que hay que subir
+    // hasta el primer ancestro con color opaco (los contenedores de ajustes son transparentes)
+    private static Color FondoEfectivo(Control control)
+    {
+        for (Control? padre = control.Parent; padre != null; padre = padre.Parent)
+            if (padre.BackColor.A == 255) return padre.BackColor;
+        return control.BackColor;
+    }
+
     private void DibujarFila(Graphics g, WindowInfo v, Rectangle limites, bool seleccionada)
     {
         var zona = new Rectangle(limites.X + 8, limites.Y + 3, limites.Width - 16, limites.Height - 6);
@@ -875,7 +884,7 @@ public sealed class MainForm : Form
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
-            g.Clear(Parent?.BackColor ?? BackColor);
+            g.Clear(FondoEfectivo(this));
             g.SmoothingMode = SmoothingMode.AntiAlias;
             var zona = new Rectangle(0, 0, Width - 1, Height - 1);
             using var camino = CaminoRedondeado(zona, Radio);
@@ -918,7 +927,7 @@ public sealed class MainForm : Form
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
-            g.Clear(Parent?.BackColor ?? BackColor);
+            g.Clear(FondoEfectivo(this));
             g.SmoothingMode = SmoothingMode.AntiAlias;
             var pista = new Rectangle(0, 0, Width - 1, Height - 1);
             using var camino = CaminoRedondeado(pista, Height / 2);
@@ -1028,7 +1037,7 @@ public sealed class MainForm : Form
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
-            g.Clear(Parent?.BackColor ?? BackColor);
+            g.Clear(FondoEfectivo(this));
             g.SmoothingMode = SmoothingMode.AntiAlias;
             // La tarjeta flotante estilo LS: redondeada, sin borde, un punto más clara que el fondo
             var tarjeta = new Rectangle(0, 0, Width - 1, Height - 1);
