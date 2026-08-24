@@ -6,6 +6,11 @@ public sealed class Config
 {
     public string ColorFondo { get; set; } = "#1B1B1B";
     public string ColorAcento { get; set; } = "#E91E63";
+    public string ColorPanel { get; set; } = "";   // vacío = derivar automáticamente del fondo
+    public string ColorTexto { get; set; } = "#FFFFFF";
+    public bool BordesRedondeados { get; set; } = true;
+    public int VentanaAncho { get; set; }   // 0 = tamaño por defecto
+    public int VentanaAlto { get; set; }
 }
 
 public static class ConfigStore

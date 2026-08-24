@@ -82,6 +82,10 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     public static extern bool ReleaseCapture();
 
+    // Scrollbars oscuros (los del Explorador en modo oscuro); sin esto quedan blancos sobre tema oscuro
+    [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
+    public static extern int SetWindowTheme(IntPtr hWnd, string? pszSubAppName, string? pszSubIdList);
+
     [DllImport("user32.dll")]
     public static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
