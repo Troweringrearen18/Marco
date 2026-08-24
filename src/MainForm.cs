@@ -402,32 +402,6 @@ public sealed class MainForm : Form
         if (Visible) Refrescar();
     }
 
-    private void EnviarAltIntro()
-    {
-        if (_lista.Seleccion is not { } v || v.Hwnd == IntPtr.Zero)
-        {
-            _estado.Text = Textos.T("estado.seleccionaViva");
-            return;
-        }
-        NativeMethods.SetForegroundWindow(v.Hwnd);
-        Thread.Sleep(250); // dar tiempo al cambio de foco antes de teclear
-        var pulsos = new[]
-        {
-            Tecla(NativeMethods.VK_MENU, soltar: false),
-            Tecla(NativeMethods.VK_RETURN, soltar: false),
-            Tecla(NativeMethods.VK_RETURN, soltar: true),
-            Tecla(NativeMethods.VK_MENU, soltar: true),
-        };
-        NativeMethods.SendInput((uint)pulsos.Length, pulsos, Marshal.SizeOf<NativeMethods.INPUT>());
-        _estado.Text = Textos.F("estado.altintro", v.Title);
-    }
-
-    private static NativeMethods.INPUT Tecla(ushort vk, bool soltar) => new()
-    {
-        Type = NativeMethods.INPUT_KEYBOARD,
-        Ki = new NativeMethods.KEYBDINPUT { Vk = vk, Flags = soltar ? NativeMethods.KEYEVENTF_KEYUP : 0 },
-    };
-
     private void ConfigurarAutoarranque(bool activar)
     {
         const string clave = @"Software\Microsoft\Windows\CurrentVersion\Run";
@@ -864,9 +838,6 @@ public sealed class MainForm : Form
                 ConfigStore.Guardar(_config);
             })));
 
-        var enviar = BotonChico(Textos.T("boton.enviar"));
-        enviar.Click += (_, _) => EnviarAltIntro();
-        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.altintro"), enviar));
         _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.hotkey"),
             new Label { AutoSize = true, Text = "" }, suave: true));
 

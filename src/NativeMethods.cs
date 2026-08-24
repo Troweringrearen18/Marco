@@ -106,34 +106,6 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
 
-    public const uint INPUT_KEYBOARD = 1;
-    public const uint KEYEVENTF_KEYUP = 0x2;
-    public const ushort VK_MENU = 0x12;   // Alt
-    public const ushort VK_RETURN = 0x0D;
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct KEYBDINPUT
-    {
-        public ushort Vk;
-        public ushort Scan;
-        public uint Flags;
-        public uint Time;
-        public UIntPtr ExtraInfo;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct INPUT
-    {
-        public uint Type;
-        public KEYBDINPUT Ki;
-        // Relleno: el union nativo dimensiona por MOUSEINPUT (8 bytes más que KEYBDINPUT)
-        private readonly int _relleno1;
-        private readonly int _relleno2;
-    }
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
-
     public const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
     public const uint TOKEN_QUERY = 0x8;
     public const int TokenIntegrityLevel = 25;
