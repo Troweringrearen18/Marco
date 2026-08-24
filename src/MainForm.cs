@@ -18,6 +18,9 @@ public sealed class MainForm : Form
     private readonly NotifyIcon _bandeja;
     private readonly System.Windows.Forms.Timer _watcher;
     private readonly HashSet<long> _watcherFallidas = new();
+    // Deshechas a mano por el usuario: el watcher las respeta mientras viva la ventana;
+    // al relanzar el juego (hwnd nuevo) vuelve el borderless automático
+    private readonly HashSet<long> _deshechasManualmente = new();
     private readonly Config _config;
     private long _huellaVentanas;
     private bool _iniciarOculto;
@@ -222,7 +225,7 @@ public sealed class MainForm : Form
             {
                 if (!EsFavorito(v.ProcessName) || v.Elevada) continue;
                 long clave = v.Hwnd.ToInt64();
-                if (_watcherFallidas.Contains(clave)) continue;
+                if (_watcherFallidas.Contains(clave) || _deshechasManualmente.Contains(clave)) continue;
                 bool aplicada = BorderlessService.TieneEstadoGuardado(v.Hwnd);
                 bool conBorde = (NativeMethods.GetWindowLongPtr(v.Hwnd, NativeMethods.GWL_STYLE)
                                  & NativeMethods.WS_CAPTION) != 0;
@@ -234,6 +237,7 @@ public sealed class MainForm : Form
                 }
             }
             _watcherFallidas.RemoveWhere(h => !NativeMethods.IsWindow(new IntPtr(h)));
+            _deshechasManualmente.RemoveWhere(h => !NativeMethods.IsWindow(new IntPtr(h)));
         }
 
         long huella = ventanas.Count;
@@ -281,6 +285,11 @@ public sealed class MainForm : Form
         bool exito = aplicada
             ? BorderlessService.Restaurar(hwnd, out error)
             : BorderlessService.Aplicar(hwnd, out error);
+        if (exito)
+        {
+            if (aplicada) _deshechasManualmente.Add(hwnd.ToInt64());
+            else _deshechasManualmente.Remove(hwnd.ToInt64());
+        }
         _bandeja.BalloonTipTitle = "SinBordes";
         _bandeja.BalloonTipText = exito
             ? (aplicada ? "Ventana restaurada." : "Ventana sin bordes.")
@@ -667,9 +676,14 @@ public sealed class MainForm : Form
         bool exito = aplicada
             ? BorderlessService.Restaurar(v.Hwnd, out error)
             : BorderlessService.Aplicar(v.Hwnd, out error);
+        if (exito)
+        {
+            if (aplicada) _deshechasManualmente.Add(v.Hwnd.ToInt64());
+            else _deshechasManualmente.Remove(v.Hwnd.ToInt64());
+        }
         _estado.Text = exito
             ? (aplicada
-                ? $"«{v.Title}» ({v.ProcessName}) restaurada."
+                ? $"«{v.Title}» ({v.ProcessName}) restaurada. Si está en la biblioteca, volverá al relanzar el juego."
                 : $"«{v.Title}» ({v.ProcessName}) ahora está sin bordes.")
             : error;
         Refrescar();
