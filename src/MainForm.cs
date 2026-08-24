@@ -62,11 +62,21 @@ public sealed class MainForm : Form
 
         // Barra de título propia, al estilo Lossless Scaling
         _barraTitulo = new Panel { Dock = DockStyle.Top, Height = 42 };
+        // Icono junto al nombre, como LS
+        var iconoTitulo = new PictureBox
+        {
+            Size = new Size(20, 20),
+            Location = new Point(13, 11),
+            BackColor = Color.Transparent,
+            Image = DibujarPixeles(20),
+        };
+        iconoTitulo.MouseDown += ArrastrarVentana;
+        _barraTitulo.Controls.Add(iconoTitulo);
         _titulo = new Label
         {
             Text = "Marco",
             AutoSize = true,
-            Location = new Point(14, 11),
+            Location = new Point(39, 11),
             Font = new Font("Segoe UI Semibold", 10.5f),
         };
         _maximizar = BotonTitulo("\uE922", AlternarMaximizado); // maximizar/restaurar (Segoe MDL2)
@@ -431,30 +441,44 @@ public sealed class MainForm : Form
         "................",
     };
 
-    private static Icon CrearIcono()
+    // Renderiza la matriz de píxeles a cualquier lado (escalado nearest para pixel nítido)
+    private static Bitmap DibujarPixeles(int lado)
     {
-        using var bmp = new Bitmap(32, 32);
-        using (var g = Graphics.FromImage(bmp))
+        var mini = new Bitmap(16, 16);
+        for (int y = 0; y < 16; y++)
         {
-            using var morado = new SolidBrush(Color.FromArgb(122, 74, 214));
-            using var gris = new SolidBrush(Color.FromArgb(201, 201, 206));
-            using var oscuro = new SolidBrush(Color.FromArgb(30, 27, 38));
-            using var brillo = new SolidBrush(Color.FromArgb(240, 240, 244));
-            for (int y = 0; y < 16; y++)
+            for (int x = 0; x < 16; x++)
             {
-                for (int x = 0; x < 16; x++)
+                char c = PixelesIcono[y][x];
+                // esquinas del fondo recortadas (transparentes), como en el .ico
+                bool esquina = ((x == 0 || x == 15) && (y == 0 || y == 15))
+                    || ((x == 1 || x == 14) && (y == 0 || y == 15))
+                    || ((x == 0 || x == 15) && (y == 1 || y == 14));
+                if (esquina && c == '.') continue;
+                mini.SetPixel(x, y, c switch
                 {
-                    char c = PixelesIcono[y][x];
-                    // esquinas del fondo recortadas (transparentes), como en el .ico
-                    bool esquina = ((x == 0 || x == 15) && (y == 0 || y == 15))
-                        || ((x == 1 || x == 14) && (y == 0 || y == 15))
-                        || ((x == 0 || x == 15) && (y == 1 || y == 14));
-                    if (esquina && c == '.') continue;
-                    var brocha = c switch { 'D' => oscuro, 'G' => gris, 'W' => brillo, _ => morado };
-                    g.FillRectangle(brocha, x * 2, y * 2, 2, 2);
-                }
+                    'D' => Color.FromArgb(30, 27, 38),
+                    'G' => Color.FromArgb(201, 201, 206),
+                    'W' => Color.FromArgb(240, 240, 244),
+                    _ => Color.FromArgb(122, 74, 214),
+                });
             }
         }
+        if (lado == 16) return mini;
+        var bmp = new Bitmap(lado, lado);
+        using (var g = Graphics.FromImage(bmp))
+        {
+            g.InterpolationMode = InterpolationMode.NearestNeighbor;
+            g.PixelOffsetMode = PixelOffsetMode.Half;
+            g.DrawImage(mini, 0, 0, lado, lado);
+        }
+        mini.Dispose();
+        return bmp;
+    }
+
+    private static Icon CrearIcono()
+    {
+        using var bmp = DibujarPixeles(32);
         return Icon.FromHandle(bmp.GetHicon());
     }
 
