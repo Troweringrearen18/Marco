@@ -6,9 +6,8 @@ namespace SinBordes;
 public sealed class MainForm : Form
 {
     private readonly ListaSuave _lista;
-    private readonly ToolStripStatusLabel _estado;
+    private readonly Label _estado;
     private readonly DesplegableIdiomas _desplegableIdiomas;
-    private readonly StatusStrip _barra;
     private readonly FlowLayoutPanel _botones;
     private readonly Panel _barraTitulo;
     private readonly Label _titulo;
@@ -77,14 +76,34 @@ public sealed class MainForm : Form
         _barraTitulo.Controls.Add(cerrar);
         _barraTitulo.Controls.Add(_maximizar);
         _barraTitulo.Controls.Add(minimizar);
+        // Los avisos viven en la barra de título (sin barra inferior) y se borran solos
+        _estado = new Label
+        {
+            AutoSize = false,
+            AutoEllipsis = true,
+            TextAlign = ContentAlignment.MiddleRight,
+            BackColor = Color.Transparent,
+        };
+        var borradoEstado = new System.Windows.Forms.Timer { Interval = 6000 };
+        borradoEstado.Tick += (_, _) => { borradoEstado.Stop(); _estado.Text = ""; };
+        _estado.TextChanged += (_, _) =>
+        {
+            borradoEstado.Stop();
+            if (_estado.Text.Length > 0) borradoEstado.Start();
+        };
+        _barraTitulo.Controls.Add(_estado);
+
         _barraTitulo.Resize += (_, _) =>
         {
             cerrar.Location = new Point(_barraTitulo.Width - cerrar.Width - 6, 5);
             _maximizar.Location = new Point(cerrar.Left - _maximizar.Width - 2, 5);
             minimizar.Location = new Point(_maximizar.Left - minimizar.Width - 2, 5);
+            _estado.SetBounds(_titulo.Right + 12, 0,
+                Math.Max(0, minimizar.Left - _titulo.Right - 24), _barraTitulo.Height);
         };
         _barraTitulo.MouseDown += ArrastrarVentana;
         _titulo.MouseDown += ArrastrarVentana;
+        _estado.MouseDown += ArrastrarVentana;
 
         _lista = new ListaSuave(this) { Dock = DockStyle.Fill };
         _lista.DobleClic += AccionPrincipal;
@@ -104,10 +123,6 @@ public sealed class MainForm : Form
         _botones.Controls.Add(_botonFavorito);
         _botones.Controls.Add(_botonActualizar);
         _botones.Controls.Add(_botonAjustes);
-
-        _barra = new StatusStrip { SizingGrip = false };
-        _estado = new ToolStripStatusLabel(Textos.T("estado.listo"));
-        _barra.Items.Add(_estado);
 
         Icon = CrearIcono();
         _bandeja = new NotifyIcon
@@ -157,11 +172,10 @@ public sealed class MainForm : Form
         _desplegableIdiomas = new DesplegableIdiomas(this);
         _desplegableIdiomas.Elegido += CambiarIdioma;
 
-        // Orden de docking: barra (fondo), panel de ajustes encima, botones encima del panel
+        // Orden de docking: panel de ajustes al fondo, botones encima del panel
         Controls.Add(_marcoLista);
         Controls.Add(_botones);
         Controls.Add(_panelAjustes);
-        Controls.Add(_barra);
         Controls.Add(_barraTitulo);
         Controls.Add(_desplegableIdiomas);
         _marcoLista.BringToFront();
@@ -491,7 +505,6 @@ public sealed class MainForm : Form
         _marcoLista.BackColor = _fondo;
         _lista.BackColor = Mezclar(_fondo, oscuro ? Color.White : Color.Black, oscuro ? 0.06f : 0.04f);
         _botones.BackColor = _fondo;
-        _barra.BackColor = _fondo;
         _estado.ForeColor = _textoSuave;
 
         int radio = _config.BordesRedondeados ? 6 : 0;
@@ -825,9 +838,6 @@ public sealed class MainForm : Form
             if (!ventanas.Any(v => v.ProcessName.Equals(favorito, StringComparison.OrdinalIgnoreCase)))
                 visibles.Add(new WindowInfo(IntPtr.Zero, Textos.T("fila.apagada"), favorito, 0));
         _lista.Cargar(visibles);
-        _estado.Text = _config.Favoritos.Count > 0
-            ? Textos.F("estado.ventanasBiblio", ventanas.Count, _config.Favoritos.Count)
-            : Textos.F("estado.ventanas", ventanas.Count);
         ActualizarBotonAccion();
     }
 
