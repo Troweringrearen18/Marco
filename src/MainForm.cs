@@ -30,6 +30,7 @@ public sealed class MainForm : Form
     private bool _globoBandeja;
     private bool _salir;
 
+    private readonly Label _version;
     private Color _fondo, _texto, _textoSuave, _panel, _textoPanel, _seleccion, _acento;
     private Font _fuenteNegrita = null!, _fuentePequena = null!;
 
@@ -182,6 +183,28 @@ public sealed class MainForm : Form
         };
         _panelAjustes.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
+        // Versión en la esquina inferior derecha, flotando a la altura de los botones
+        string producto = Application.ProductVersion.Split('+', '-')[0];
+        var trozos = producto.Split('.');
+        _version = new Label
+        {
+            AutoSize = true,
+            Text = "v" + (trozos.Length >= 2 ? $"{trozos[0]}.{trozos[1]}" : producto),
+            Font = new Font("Segoe UI", 8.25f),
+            BackColor = Color.Transparent,
+        };
+        void ColocarVersion()
+        {
+            _version.Location = new Point(
+                ClientSize.Width - _version.Width - 14,
+                _botones.Top + (_botones.Height - _version.Height) / 2);
+            _version.BringToFront();
+        }
+        _botones.SizeChanged += (_, _) => ColocarVersion();
+        _botones.LocationChanged += (_, _) => ColocarVersion();
+        _version.SizeChanged += (_, _) => ColocarVersion();
+        Resize += (_, _) => ColocarVersion();
+
         _desplegableIdiomas = new DesplegableIdiomas(this);
         _desplegableIdiomas.Elegido += CambiarIdioma;
 
@@ -191,6 +214,7 @@ public sealed class MainForm : Form
         Controls.Add(_panelAjustes);
         Controls.Add(_barraTitulo);
         Controls.Add(_desplegableIdiomas);
+        Controls.Add(_version);
         _marcoLista.BringToFront();
 
         // Autoarranque activo: refrescar la entrada del registro por si el exe cambió
@@ -569,6 +593,7 @@ public sealed class MainForm : Form
         _lista.BackColor = Mezclar(_fondo, oscuro ? Color.White : Color.Black, oscuro ? 0.06f : 0.04f);
         _botones.BackColor = _fondo;
         _estado.ForeColor = _textoSuave;
+        _version.ForeColor = _textoSuave;
 
         int radio = _config.BordesRedondeados ? 6 : 0;
         bool panelOscuro = _panel.GetBrightness() < 0.5f;
