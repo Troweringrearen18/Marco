@@ -1,4 +1,5 @@
 ﻿using System.Drawing.Drawing2D;
+using System.Runtime.InteropServices;
 
 namespace SinBordes;
 
@@ -12,8 +13,16 @@ public sealed class MainForm : Form
     private readonly Label _titulo;
     private readonly Button _maximizar;
     private readonly BotonRedondeado _botonAccion;
+    private readonly BotonRedondeado _botonFavorito;
     private readonly Panel _marcoLista;
+    private readonly NotifyIcon _bandeja;
+    private readonly System.Windows.Forms.Timer _watcher;
+    private readonly HashSet<long> _watcherFallidas = new();
     private readonly Config _config;
+    private long _huellaVentanas;
+    private bool _iniciarOculto;
+    private bool _globoBandeja;
+    private bool _salir;
 
     private Color _fondo, _texto, _textoSuave, _panel, _textoPanel, _seleccion, _acento;
     private Font _fuenteNegrita = null!, _fuentePequena = null!;
@@ -21,6 +30,7 @@ public sealed class MainForm : Form
     public MainForm()
     {
         _config = ConfigStore.Cargar();
+        _iniciarOculto = _config.ArrancarMinimizado;
 
         Text = "SinBordes";
         StartPosition = FormStartPosition.CenterScreen;
@@ -52,7 +62,7 @@ public sealed class MainForm : Form
         };
         _maximizar = BotonTitulo("\uE922", AlternarMaximizado); // maximizar/restaurar (Segoe MDL2)
         var cerrar = BotonTitulo("\uE8BB", Close);
-        var minimizar = BotonTitulo("\uE921", () => WindowState = FormWindowState.Minimized);
+        var minimizar = BotonTitulo("\uE921", OcultarABandeja); // minimizar = irse a la bandeja
         _barraTitulo.Controls.Add(_titulo);
         _barraTitulo.Controls.Add(cerrar);
         _barraTitulo.Controls.Add(_maximizar);
@@ -77,13 +87,48 @@ public sealed class MainForm : Form
             Padding = new Padding(8),
         };
         _botonAccion = Boton("Hacer borderless", AccionPrincipal);
+        _botonFavorito = Boton("Guardar en biblioteca", AlternarFavorito);
         _botones.Controls.Add(_botonAccion);
+        _botones.Controls.Add(_botonFavorito);
         _botones.Controls.Add(Boton("Actualizar", Refrescar));
         _botones.Controls.Add(Boton("Ajustes…", MenuAjustes));
 
         _barra = new StatusStrip { SizingGrip = false };
         _estado = new ToolStripStatusLabel("Listo.");
         _barra.Items.Add(_estado);
+
+        Icon = CrearIcono();
+        var menuBandeja = new ContextMenuStrip();
+        menuBandeja.Items.Add("Mostrar SinBordes", null, (_, _) => MostrarDesdeBandeja());
+        menuBandeja.Items.Add(new ToolStripSeparator());
+        menuBandeja.Items.Add("Salir", null, (_, _) => { _salir = true; Close(); });
+        _bandeja = new NotifyIcon
+        {
+            Icon = Icon,
+            Text = "SinBordes",
+            Visible = true,
+            ContextMenuStrip = menuBandeja,
+        };
+        _bandeja.DoubleClick += (_, _) => MostrarDesdeBandeja();
+
+        // Watcher: aplica borderless solo a los juegos de la biblioteca según arrancan
+        _watcher = new System.Windows.Forms.Timer { Interval = 2000 };
+        _watcher.Tick += (_, _) => TickWatcher();
+        _watcher.Start();
+
+        FormClosing += (_, e) =>
+        {
+            // Con "cerrar minimiza": la ✕ esconde a la bandeja; salir de verdad es el menú de bandeja
+            if (_config.CerrarMinimiza && !_salir && e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+                OcultarABandeja();
+                return;
+            }
+            _bandeja.Visible = false;
+            _bandeja.Dispose();
+            NativeMethods.UnregisterHotKey(Handle, 1);
+        };
 
         // Estilo LS: sin líneas separadoras — la tarjeta redondeada la pinta ListaSuave
         _marcoLista = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, 4, 0, 4) };
@@ -106,6 +151,10 @@ public sealed class MainForm : Form
         int redondeo = NativeMethods.DWMWCP_ROUND;
         _ = NativeMethods.DwmSetWindowAttribute(Handle,
             NativeMethods.DWMWA_WINDOW_CORNER_PREFERENCE, ref redondeo, sizeof(int));
+
+        // Hotkey global Ctrl+Alt+B: borderless/deshacer sobre la ventana activa
+        NativeMethods.RegisterHotKey(Handle, 1,
+            NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, 0x42 /* B */);
     }
 
     private void ArrastrarVentana(object? sender, MouseEventArgs e)
@@ -132,10 +181,178 @@ public sealed class MainForm : Form
         }
     }
 
+    // Arrancar minimizado: se veta la primera visualización en vez de un Hide posterior
+    protected override void SetVisibleCore(bool value)
+    {
+        if (_iniciarOculto && value)
+        {
+            _iniciarOculto = false;
+            value = false;
+            if (!IsHandleCreated) CreateHandle(); // el hotkey y el watcher necesitan handle
+        }
+        base.SetVisibleCore(value);
+    }
+
+    private void OcultarABandeja()
+    {
+        Hide();
+        if (_globoBandeja) return;
+        _globoBandeja = true;
+        _bandeja.BalloonTipTitle = "SinBordes";
+        _bandeja.BalloonTipText = "Sigue en la bandeja: el watcher aplica borderless a tu biblioteca.";
+        _bandeja.ShowBalloonTip(1500);
+    }
+
+    private void MostrarDesdeBandeja()
+    {
+        Show();
+        WindowState = FormWindowState.Normal;
+        Activate();
+        Refrescar();
+    }
+
+    private void TickWatcher()
+    {
+        var ventanas = WindowEnumerator.Listar();
+
+        bool cambio = false;
+        if (_config.Favoritos.Count > 0)
+        {
+            foreach (var v in ventanas)
+            {
+                if (!EsFavorito(v.ProcessName) || v.Elevada) continue;
+                long clave = v.Hwnd.ToInt64();
+                if (_watcherFallidas.Contains(clave)) continue;
+                bool aplicada = BorderlessService.TieneEstadoGuardado(v.Hwnd);
+                bool conBorde = (NativeMethods.GetWindowLongPtr(v.Hwnd, NativeMethods.GWL_STYLE)
+                                 & NativeMethods.WS_CAPTION) != 0;
+                // Ventana favorita nueva, o el juego re-impuso su borde al cambiar de escena
+                if (!aplicada || conBorde)
+                {
+                    if (BorderlessService.Aplicar(v.Hwnd, out _)) cambio = true;
+                    else _watcherFallidas.Add(clave); // no insistir cada 2 s contra un fallo persistente
+                }
+            }
+            _watcherFallidas.RemoveWhere(h => !NativeMethods.IsWindow(new IntPtr(h)));
+        }
+
+        long huella = ventanas.Count;
+        foreach (var v in ventanas) huella = unchecked(huella * 31 + v.Hwnd.ToInt64());
+        if (cambio || huella != _huellaVentanas)
+        {
+            _huellaVentanas = huella;
+            if (Visible) RefrescarCon(ventanas);
+        }
+    }
+
+    private bool EsFavorito(string proceso) =>
+        _config.Favoritos.Any(f => f.Equals(proceso, StringComparison.OrdinalIgnoreCase));
+
+    private void AlternarFavorito()
+    {
+        if (_lista.Seleccion is not { } v)
+        {
+            _estado.Text = "Selecciona una ventana de la lista.";
+            return;
+        }
+        if (EsFavorito(v.ProcessName))
+        {
+            _config.Favoritos.RemoveAll(f => f.Equals(v.ProcessName, StringComparison.OrdinalIgnoreCase));
+            _estado.Text = $"{v.ProcessName} fuera de la biblioteca.";
+        }
+        else
+        {
+            _config.Favoritos.Add(v.ProcessName);
+            _estado.Text = $"{v.ProcessName} en la biblioteca: borderless automático al detectarlo.";
+        }
+        ConfigStore.Guardar(_config);
+        Refrescar();
+    }
+
+    // Hotkey global: borderless/deshacer sobre la ventana en primer plano
+    private void AlternarVentanaActiva()
+    {
+        IntPtr hwnd = NativeMethods.GetForegroundWindow();
+        if (hwnd == IntPtr.Zero || hwnd == Handle) return;
+        NativeMethods.GetWindowThreadProcessId(hwnd, out uint pid);
+        if (pid == Environment.ProcessId) return;
+        bool aplicada = BorderlessService.TieneEstadoGuardado(hwnd);
+        string error;
+        bool exito = aplicada
+            ? BorderlessService.Restaurar(hwnd, out error)
+            : BorderlessService.Aplicar(hwnd, out error);
+        _bandeja.BalloonTipTitle = "SinBordes";
+        _bandeja.BalloonTipText = exito
+            ? (aplicada ? "Ventana restaurada." : "Ventana sin bordes.")
+            : error;
+        _bandeja.ShowBalloonTip(1200);
+        if (Visible) Refrescar();
+    }
+
+    private void EnviarAltIntro()
+    {
+        if (_lista.Seleccion is not { } v || v.Hwnd == IntPtr.Zero)
+        {
+            _estado.Text = "Selecciona una ventana en ejecución.";
+            return;
+        }
+        NativeMethods.SetForegroundWindow(v.Hwnd);
+        Thread.Sleep(250); // dar tiempo al cambio de foco antes de teclear
+        var pulsos = new[]
+        {
+            Tecla(NativeMethods.VK_MENU, soltar: false),
+            Tecla(NativeMethods.VK_RETURN, soltar: false),
+            Tecla(NativeMethods.VK_RETURN, soltar: true),
+            Tecla(NativeMethods.VK_MENU, soltar: true),
+        };
+        NativeMethods.SendInput((uint)pulsos.Length, pulsos, Marshal.SizeOf<NativeMethods.INPUT>());
+        _estado.Text = $"Alt+Intro enviado a «{v.Title}».";
+    }
+
+    private static NativeMethods.INPUT Tecla(ushort vk, bool soltar) => new()
+    {
+        Type = NativeMethods.INPUT_KEYBOARD,
+        Ki = new NativeMethods.KEYBDINPUT { Vk = vk, Flags = soltar ? NativeMethods.KEYEVENTF_KEYUP : 0 },
+    };
+
+    private void ConfigurarAutoarranque(bool activar)
+    {
+        const string clave = @"Software\Microsoft\Windows\CurrentVersion\Run";
+        try
+        {
+            using var run = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(clave, writable: true);
+            if (activar)
+                run?.SetValue("SinBordes", $"\"{Application.ExecutablePath}\"");
+            else
+                run?.DeleteValue("SinBordes", throwOnMissingValue: false);
+        }
+        catch
+        {
+            _estado.Text = "No se pudo tocar el autoarranque en el registro.";
+        }
+    }
+
+    private static Icon CrearIcono()
+    {
+        using var bmp = new Bitmap(32, 32);
+        using (var g = Graphics.FromImage(bmp))
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using var fondo = new SolidBrush(Color.FromArgb(233, 30, 99));
+            using var camino = CaminoRedondeado(new Rectangle(1, 1, 29, 29), 8);
+            g.FillPath(fondo, camino);
+            using var pluma = new Pen(Color.White, 3f);
+            g.DrawRectangle(pluma, 9, 9, 13, 13);
+        }
+        return Icon.FromHandle(bmp.GetHicon());
+    }
+
     // Sin marco del sistema no hay bordes de agarre: se reconstruyen sobre el anillo de Padding
     protected override void WndProc(ref Message m)
     {
         const int WM_NCHITTEST = 0x84;
+        if (m.Msg == NativeMethods.WM_HOTKEY && m.WParam == (IntPtr)1)
+            AlternarVentanaActiva();
         base.WndProc(ref m);
         if (m.Msg != WM_NCHITTEST || m.Result != (IntPtr)1 || WindowState != FormWindowState.Normal)
             return;
@@ -270,29 +487,45 @@ public sealed class MainForm : Form
             g.FillRectangle(franja, zona.X, zona.Y + 6, 3, zona.Height - 12);
         }
 
-        bool aplicada = BorderlessService.TieneEstadoGuardado(v.Hwnd);
+        bool apagada = v.Hwnd == IntPtr.Zero;
+        bool aplicada = !apagada && BorderlessService.TieneEstadoGuardado(v.Hwnd);
         int derecha = zona.Right - 10;
         if (aplicada)
-        {
-            var medida = TextRenderer.MeasureText("sin bordes", _fuentePequena);
-            var pildora = new Rectangle(zona.Right - medida.Width - 22, zona.Y + (zona.Height - medida.Height - 8) / 2,
-                medida.Width + 14, medida.Height + 8);
-            using var fondoPildora = new SolidBrush(Color.FromArgb(45, _acento));
-            using var caminoPildora = CaminoRedondeado(pildora, pildora.Height / 2);
-            g.FillPath(fondoPildora, caminoPildora);
-            TextRenderer.DrawText(g, "sin bordes", _fuentePequena, pildora,
-                Mezclar(_acento, _texto, 0.35f),
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-            derecha = pildora.Left - 8;
-        }
+            derecha = Pildora(g, zona, "sin bordes", _acento);
+        else if (v.Elevada)
+            derecha = Pildora(g, zona, "admin", Color.FromArgb(230, 126, 34)); // UIPI bloqueará: avisar
 
         var zonaTexto = new Rectangle(zona.X + 14, zona.Y + 4, derecha - zona.X - 14, zona.Height - 8);
+        var lineaNombre = new Rectangle(zonaTexto.X, zonaTexto.Y, zonaTexto.Width, zonaTexto.Height / 2);
+        int xNombre = zonaTexto.X;
+        if (EsFavorito(v.ProcessName))
+        {
+            TextRenderer.DrawText(g, "★", _fuenteNegrita, lineaNombre, _acento,
+                TextFormatFlags.Left | TextFormatFlags.Bottom);
+            xNombre += 20;
+        }
         TextRenderer.DrawText(g, v.ProcessName, _fuenteNegrita,
-            new Rectangle(zonaTexto.X, zonaTexto.Y, zonaTexto.Width, zonaTexto.Height / 2),
-            _texto, TextFormatFlags.Left | TextFormatFlags.Bottom | TextFormatFlags.EndEllipsis);
+            new Rectangle(xNombre, zonaTexto.Y, zonaTexto.Width - (xNombre - zonaTexto.X), zonaTexto.Height / 2),
+            apagada ? _textoSuave : _texto,
+            TextFormatFlags.Left | TextFormatFlags.Bottom | TextFormatFlags.EndEllipsis);
         TextRenderer.DrawText(g, v.Title, _fuentePequena,
             new Rectangle(zonaTexto.X, zonaTexto.Y + zonaTexto.Height / 2, zonaTexto.Width, zonaTexto.Height / 2),
             _textoSuave, TextFormatFlags.Left | TextFormatFlags.Top | TextFormatFlags.EndEllipsis);
+    }
+
+    /// <returns>Borde izquierdo de la píldora, para truncar el texto de la fila ahí.</returns>
+    private int Pildora(Graphics g, Rectangle zona, string texto, Color color)
+    {
+        var medida = TextRenderer.MeasureText(texto, _fuentePequena);
+        var pildora = new Rectangle(zona.Right - medida.Width - 22, zona.Y + (zona.Height - medida.Height - 8) / 2,
+            medida.Width + 14, medida.Height + 8);
+        using var fondoPildora = new SolidBrush(Color.FromArgb(45, color));
+        using var caminoPildora = CaminoRedondeado(pildora, pildora.Height / 2);
+        g.FillPath(fondoPildora, caminoPildora);
+        TextRenderer.DrawText(g, texto, _fuentePequena, pildora,
+            Mezclar(color, _texto, 0.35f),
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        return pildora.Left - 8;
     }
 
     private static GraphicsPath CaminoRedondeado(Rectangle r, int radio)
@@ -348,7 +581,35 @@ public sealed class MainForm : Form
         };
         menu.Items.Add(redondeo);
 
+        menu.Items.Add(Alternador("Arrancar con Windows", _config.IniciarConWindows, valor =>
+        {
+            _config.IniciarConWindows = valor;
+            ConfigurarAutoarranque(valor);
+        }));
+        menu.Items.Add(Alternador("Arrancar minimizado en bandeja", _config.ArrancarMinimizado,
+            valor => _config.ArrancarMinimizado = valor));
+        menu.Items.Add(Alternador("Al cerrar, minimizar a la bandeja", _config.CerrarMinimiza,
+            valor => _config.CerrarMinimiza = valor));
+
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Enviar Alt+Intro a la seleccionada", null, (_, _) => EnviarAltIntro());
+        menu.Items.Add(new ToolStripMenuItem("Hotkey: Ctrl+Alt+B — borderless a la ventana activa")
+        {
+            Enabled = false,
+        });
+
         menu.Show(Cursor.Position);
+    }
+
+    private ToolStripMenuItem Alternador(string texto, bool valor, Action<bool> asignar)
+    {
+        var opcion = new ToolStripMenuItem(texto) { Checked = valor, CheckOnClick = true };
+        opcion.CheckedChanged += (_, _) =>
+        {
+            asignar(opcion.Checked);
+            ConfigStore.Guardar(_config);
+        };
+        return opcion;
     }
 
     private void ElegirColor(Action<string> asignar, Color actual)
@@ -361,19 +622,32 @@ public sealed class MainForm : Form
         _estado.Text = "Colores guardados.";
     }
 
-    private void Refrescar()
+    private void Refrescar() => RefrescarCon(WindowEnumerator.Listar());
+
+    private void RefrescarCon(List<WindowInfo> ventanas)
     {
-        _lista.Cargar(WindowEnumerator.Listar());
-        _estado.Text = $"{_lista.Cuenta} ventanas.";
+        // La biblioteca: los favoritos sin ejecutar aparecen al final, apagados
+        var visibles = new List<WindowInfo>(ventanas);
+        foreach (string favorito in _config.Favoritos)
+            if (!ventanas.Any(v => v.ProcessName.Equals(favorito, StringComparison.OrdinalIgnoreCase)))
+                visibles.Add(new WindowInfo(IntPtr.Zero, "Sin ejecutar — borderless automático al arrancar", favorito, 0));
+        _lista.Cargar(visibles);
+        _estado.Text = _config.Favoritos.Count > 0
+            ? $"{ventanas.Count} ventanas · {_config.Favoritos.Count} en biblioteca."
+            : $"{ventanas.Count} ventanas.";
         ActualizarBotonAccion();
     }
 
-    // El botón principal es contextual: aplica sobre ventanas normales, deshace sobre aplicadas
+    // Los botones son contextuales según la fila seleccionada
     private void ActualizarBotonAccion()
     {
-        _botonAccion.Text = _lista.Seleccion is { } v && BorderlessService.TieneEstadoGuardado(v.Hwnd)
+        var v = _lista.Seleccion;
+        _botonAccion.Text = v is not null && v.Hwnd != IntPtr.Zero && BorderlessService.TieneEstadoGuardado(v.Hwnd)
             ? "Deshacer"
             : "Hacer borderless";
+        _botonFavorito.Text = v is not null && EsFavorito(v.ProcessName)
+            ? "Quitar de biblioteca"
+            : "Guardar en biblioteca";
     }
 
     private void AccionPrincipal()
@@ -381,6 +655,11 @@ public sealed class MainForm : Form
         if (_lista.Seleccion is not { } v)
         {
             _estado.Text = "Selecciona una ventana de la lista.";
+            return;
+        }
+        if (v.Hwnd == IntPtr.Zero)
+        {
+            _estado.Text = "Ese juego no está en ejecución: el watcher actuará cuando arranque.";
             return;
         }
         bool aplicada = BorderlessService.TieneEstadoGuardado(v.Hwnd);

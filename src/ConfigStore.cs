@@ -11,6 +11,10 @@ public sealed class Config
     public bool BordesRedondeados { get; set; } = true;
     public int VentanaAncho { get; set; }   // 0 = tamaño por defecto
     public int VentanaAlto { get; set; }
+    public List<string> Favoritos { get; set; } = new();
+    public bool ArrancarMinimizado { get; set; }
+    public bool IniciarConWindows { get; set; }
+    public bool CerrarMinimiza { get; set; }   // ✕ esconde a la bandeja en vez de salir
 }
 
 public static class ConfigStore
