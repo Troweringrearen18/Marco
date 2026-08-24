@@ -1,6 +1,6 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 
-namespace SinBordes;
+namespace Marco;
 
 public sealed class Config
 {
@@ -20,8 +20,27 @@ public sealed class Config
 
 public static class ConfigStore
 {
-    private static readonly string Ruta = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SinBordes", "config.json");
+    /// <summary>Carpeta de datos; migra la del nombre antiguo (SinBordes) si existe.</summary>
+    internal static readonly string Carpeta = PrepararCarpeta();
+
+    private static readonly string Ruta = Path.Combine(Carpeta, "config.json");
+
+    private static string PrepararCarpeta()
+    {
+        string appdata = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string nueva = Path.Combine(appdata, "Marco");
+        try
+        {
+            string vieja = Path.Combine(appdata, "SinBordes");
+            if (!Directory.Exists(nueva) && Directory.Exists(vieja))
+                Directory.Move(vieja, nueva);
+        }
+        catch
+        {
+            // Si la migración falla, se arranca con carpeta nueva vacía
+        }
+        return nueva;
+    }
 
     public static Config Cargar()
     {

@@ -1,12 +1,12 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace SinBordes;
+namespace Marco;
 
 public sealed record WindowInfo(IntPtr Hwnd, string Title, string ProcessName, int Pid)
 {
-    /// <summary>El proceso corre con más privilegios que SinBordes: UIPI bloqueará los cambios.</summary>
+    /// <summary>El proceso corre con más privilegios que Marco: UIPI bloqueará los cambios.</summary>
     public bool Elevada { get; init; }
 }
 

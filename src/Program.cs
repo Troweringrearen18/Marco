@@ -1,4 +1,4 @@
-namespace SinBordes;
+﻿namespace Marco;
 
 static class Program
 {
@@ -10,7 +10,7 @@ static class Program
         ApplicationConfiguration.Initialize();
         Textos.Idioma = ConfigStore.Cargar().Idioma;
 
-        // Modo CLI para scripts y pruebas: SinBordes --apply <proceso> | --restore <proceso>
+        // Modo CLI para scripts y pruebas: Marco --apply <proceso> | --restore <proceso>
         if (args.Length >= 2 && args[0] is "--apply" or "--restore")
             return Cli(args[0], args[1]);
 

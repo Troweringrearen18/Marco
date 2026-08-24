@@ -1,7 +1,7 @@
 ﻿using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 
-namespace SinBordes;
+namespace Marco;
 
 public sealed class MainForm : Form
 {
@@ -39,7 +39,7 @@ public sealed class MainForm : Form
         Textos.Idioma = string.IsNullOrEmpty(_config.Idioma) ? "en" : _config.Idioma;
         _iniciarOculto = _config.ArrancarMinimizado;
 
-        Text = "SinBordes";
+        Text = "Marco";
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.None;
         // Apaisada como LS; si el usuario la redimensionó, se respeta su último tamaño
@@ -64,7 +64,7 @@ public sealed class MainForm : Form
         _barraTitulo = new Panel { Dock = DockStyle.Top, Height = 42 };
         _titulo = new Label
         {
-            Text = "SinBordes",
+            Text = "Marco",
             AutoSize = true,
             Location = new Point(14, 11),
             Font = new Font("Segoe UI Semibold", 10.5f),
@@ -128,7 +128,7 @@ public sealed class MainForm : Form
         _bandeja = new NotifyIcon
         {
             Icon = Icon,
-            Text = "SinBordes",
+            Text = "Marco",
             Visible = true,
         };
         _bandeja.DoubleClick += (_, _) => MostrarDesdeBandeja();
@@ -179,6 +179,10 @@ public sealed class MainForm : Form
         Controls.Add(_barraTitulo);
         Controls.Add(_desplegableIdiomas);
         _marcoLista.BringToFront();
+
+        // Autoarranque activo: refrescar la entrada del registro por si el exe cambió
+        // de nombre o de ruta (p.ej. renombrado SinBordes → Marco, o Debug → Release)
+        if (_config.IniciarConWindows) ConfigurarAutoarranque(true);
 
         AplicarTema();
         Load += (_, _) => Refrescar();
@@ -260,7 +264,7 @@ public sealed class MainForm : Form
         Hide();
         if (_globoBandeja) return;
         _globoBandeja = true;
-        _bandeja.BalloonTipTitle = "SinBordes";
+        _bandeja.BalloonTipTitle = "Marco";
         _bandeja.BalloonTipText = Textos.T("bandeja.globo");
         _bandeja.ShowBalloonTip(1500);
     }
@@ -349,7 +353,7 @@ public sealed class MainForm : Form
             if (aplicada) _deshechasManualmente.Add(hwnd.ToInt64());
             else _deshechasManualmente.Remove(hwnd.ToInt64());
         }
-        _bandeja.BalloonTipTitle = "SinBordes";
+        _bandeja.BalloonTipTitle = "Marco";
         _bandeja.BalloonTipText = exito
             ? (aplicada ? Textos.T("bandeja.restaurada") : Textos.T("bandeja.sinbordes"))
             : error;
@@ -390,9 +394,10 @@ public sealed class MainForm : Form
         {
             using var run = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(clave, writable: true);
             if (activar)
-                run?.SetValue("SinBordes", $"\"{Application.ExecutablePath}\"");
+                run?.SetValue("Marco", $"\"{Application.ExecutablePath}\"");
             else
-                run?.DeleteValue("SinBordes", throwOnMissingValue: false);
+                run?.DeleteValue("Marco", throwOnMissingValue: false);
+            run?.DeleteValue("SinBordes", throwOnMissingValue: false); // entrada del nombre antiguo
         }
         catch
         {

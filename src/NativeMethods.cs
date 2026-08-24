@@ -1,7 +1,7 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Text;
 
-namespace SinBordes;
+namespace Marco;
 
 internal static class NativeMethods
 {

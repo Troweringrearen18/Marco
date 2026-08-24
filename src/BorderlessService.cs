@@ -1,7 +1,7 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Text.Json;
 
-namespace SinBordes;
+namespace Marco;
 
 public sealed class EstadoVentana
 {
@@ -22,9 +22,9 @@ public static class BorderlessService
     private const long EstilosBordeEx =
         NativeMethods.WS_EX_DLGMODALFRAME | NativeMethods.WS_EX_CLIENTEDGE | NativeMethods.WS_EX_STATICEDGE;
 
-    // Persistido en disco para poder restaurar aunque SinBordes se haya cerrado entre medias
-    private static readonly string RutaEstado = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SinBordes", "estado.json");
+    // Persistido en disco para poder restaurar aunque Marco se haya cerrado entre medias.
+    // Vía ConfigStore.Carpeta para que la migración de carpeta corra antes que este path
+    private static readonly string RutaEstado = Path.Combine(ConfigStore.Carpeta, "estado.json");
 
     private static readonly Dictionary<long, EstadoVentana> Guardadas;
 
