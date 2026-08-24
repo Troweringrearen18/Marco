@@ -405,21 +405,52 @@ public sealed class MainForm : Form
         }
     }
 
-    // Fondo morado + "pantalla": rectángulo horizontal con borde oscuro y gris dentro
+    // Icono pixel-art (mismo diseño que icono.ico): la pantalla con el marco
+    // rompiéndose por la esquina — Marco, el marco que quitamos.
+    // . fondo morado, D oscuro, G gris pantalla, W brillo
+    private static readonly string[] PixelesIcono =
+    {
+        "................",
+        "................",
+        "............DD..",
+        "..DDDDDDDDD..D..",
+        "..DGGGGGGGGGG...",
+        "..DGWWGGGGGGG...",
+        "..DGWGGGGGGGGD..",
+        "..DGGGGGGGGGGD..",
+        "..DGGGGGGGGGGD..",
+        "..DGGGGGGGGGGD..",
+        "..DGGGGGGGGGGD..",
+        "..DDDDDDDDDDDD..",
+        "................",
+        "................",
+        "................",
+        "................",
+    };
+
     private static Icon CrearIcono()
     {
         using var bmp = new Bitmap(32, 32);
         using (var g = Graphics.FromImage(bmp))
         {
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            using var fondo = new SolidBrush(Color.FromArgb(122, 74, 214));
-            using var camino = CaminoRedondeado(new Rectangle(1, 1, 29, 29), 8);
-            g.FillPath(fondo, camino);
-            var pantalla = new Rectangle(6, 10, 20, 12);
-            using var relleno = new SolidBrush(Color.FromArgb(201, 201, 206));
-            g.FillRectangle(relleno, pantalla);
-            using var pluma = new Pen(Color.FromArgb(30, 27, 38), 2f);
-            g.DrawRectangle(pluma, pantalla);
+            using var morado = new SolidBrush(Color.FromArgb(122, 74, 214));
+            using var gris = new SolidBrush(Color.FromArgb(201, 201, 206));
+            using var oscuro = new SolidBrush(Color.FromArgb(30, 27, 38));
+            using var brillo = new SolidBrush(Color.FromArgb(240, 240, 244));
+            for (int y = 0; y < 16; y++)
+            {
+                for (int x = 0; x < 16; x++)
+                {
+                    char c = PixelesIcono[y][x];
+                    // esquinas del fondo recortadas (transparentes), como en el .ico
+                    bool esquina = ((x == 0 || x == 15) && (y == 0 || y == 15))
+                        || ((x == 1 || x == 14) && (y == 0 || y == 15))
+                        || ((x == 0 || x == 15) && (y == 1 || y == 14));
+                    if (esquina && c == '.') continue;
+                    var brocha = c switch { 'D' => oscuro, 'G' => gris, 'W' => brillo, _ => morado };
+                    g.FillRectangle(brocha, x * 2, y * 2, 2, 2);
+                }
+            }
         }
         return Icon.FromHandle(bmp.GetHicon());
     }
