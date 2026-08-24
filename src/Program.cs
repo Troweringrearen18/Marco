@@ -8,6 +8,7 @@ static class Program
         // Antes de la rama CLI: aquí se activa PerMonitorV2, y sin él GetMonitorInfo
         // devuelve coordenadas virtualizadas con escalado ≠ 100%
         ApplicationConfiguration.Initialize();
+        Textos.Idioma = ConfigStore.Cargar().Idioma;
 
         // Modo CLI para scripts y pruebas: SinBordes --apply <proceso> | --restore <proceso>
         if (args.Length >= 2 && args[0] is "--apply" or "--restore")
@@ -25,7 +26,7 @@ static class Program
             .ToList();
         if (ventanas.Count == 0)
         {
-            Console.WriteLine($"No hay ventanas visibles del proceso «{proceso}».");
+            Console.WriteLine(Textos.F("cli.sinVentanas", proceso));
             return 2;
         }
 

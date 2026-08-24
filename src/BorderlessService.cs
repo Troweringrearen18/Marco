@@ -53,7 +53,7 @@ public static class BorderlessService
         long exStyle = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE);
         if (style == 0 || !NativeMethods.GetWindowRect(hwnd, out var rect))
         {
-            error = "No se pudo leer la ventana (¿el proceso corre como administrador?).";
+            error = Textos.T("err.leer");
             return false;
         }
 
@@ -78,7 +78,7 @@ public static class BorderlessService
         // UIPI falla en silencio: la única comprobación fiable es releer el estilo
         if ((NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GWL_STYLE) & NativeMethods.WS_CAPTION) != 0)
         {
-            error = "Windows bloqueó el cambio (el proceso tiene más privilegios). Ejecuta SinBordes como administrador.";
+            error = Textos.T("err.uipi");
             return false;
         }
 
@@ -86,7 +86,7 @@ public static class BorderlessService
         IntPtr monitor = NativeMethods.MonitorFromWindow(hwnd, NativeMethods.MONITOR_DEFAULTTONEAREST);
         if (!NativeMethods.GetMonitorInfo(monitor, ref mi))
         {
-            error = "No se pudo obtener el monitor de la ventana.";
+            error = Textos.T("err.monitor");
             return false;
         }
 
@@ -96,7 +96,7 @@ public static class BorderlessService
                 r.Right - r.Left, r.Bottom - r.Top,
                 NativeMethods.SWP_FRAMECHANGED | NativeMethods.SWP_SHOWWINDOW | NativeMethods.SWP_NOOWNERZORDER))
         {
-            error = "SetWindowPos falló al colocar la ventana.";
+            error = Textos.T("err.colocar");
             return false;
         }
 
@@ -108,7 +108,7 @@ public static class BorderlessService
         error = "";
         if (!Guardadas.TryGetValue(hwnd.ToInt64(), out var estado))
         {
-            error = "No hay estado guardado de esa ventana.";
+            error = Textos.T("err.sinEstado");
             return false;
         }
 
@@ -119,7 +119,7 @@ public static class BorderlessService
                 estado.Left, estado.Top, estado.Width, estado.Height,
                 NativeMethods.SWP_FRAMECHANGED | NativeMethods.SWP_SHOWWINDOW | NativeMethods.SWP_NOOWNERZORDER))
         {
-            error = "SetWindowPos falló al restaurar.";
+            error = Textos.T("err.restaurar");
             return false;
         }
 

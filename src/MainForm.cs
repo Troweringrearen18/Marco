@@ -14,6 +14,8 @@ public sealed class MainForm : Form
     private readonly Button _maximizar;
     private readonly BotonRedondeado _botonAccion;
     private readonly BotonRedondeado _botonFavorito;
+    private readonly BotonRedondeado _botonActualizar;
+    private readonly BotonRedondeado _botonAjustes;
     private readonly Panel _marcoLista;
     private readonly NotifyIcon _bandeja;
     private readonly System.Windows.Forms.Timer _watcher;
@@ -33,6 +35,7 @@ public sealed class MainForm : Form
     public MainForm()
     {
         _config = ConfigStore.Cargar();
+        Textos.Idioma = string.IsNullOrEmpty(_config.Idioma) ? "en" : _config.Idioma;
         _iniciarOculto = _config.ArrancarMinimizado;
 
         Text = "SinBordes";
@@ -89,30 +92,28 @@ public sealed class MainForm : Form
             AutoSize = true,
             Padding = new Padding(8),
         };
-        _botonAccion = Boton("Hacer borderless", AccionPrincipal);
-        _botonFavorito = Boton("Guardar en biblioteca", AlternarFavorito);
+        _botonAccion = Boton(Textos.T("boton.aplicar"), AccionPrincipal);
+        _botonFavorito = Boton(Textos.T("boton.guardar"), AlternarFavorito);
+        _botonActualizar = Boton(Textos.T("boton.actualizar"), Refrescar);
+        _botonAjustes = Boton(Textos.T("boton.ajustes"), MenuAjustes);
         _botones.Controls.Add(_botonAccion);
         _botones.Controls.Add(_botonFavorito);
-        _botones.Controls.Add(Boton("Actualizar", Refrescar));
-        _botones.Controls.Add(Boton("Ajustes…", MenuAjustes));
+        _botones.Controls.Add(_botonActualizar);
+        _botones.Controls.Add(_botonAjustes);
 
         _barra = new StatusStrip { SizingGrip = false };
-        _estado = new ToolStripStatusLabel("Listo.");
+        _estado = new ToolStripStatusLabel(Textos.T("estado.listo"));
         _barra.Items.Add(_estado);
 
         Icon = CrearIcono();
-        var menuBandeja = new ContextMenuStrip();
-        menuBandeja.Items.Add("Mostrar SinBordes", null, (_, _) => MostrarDesdeBandeja());
-        menuBandeja.Items.Add(new ToolStripSeparator());
-        menuBandeja.Items.Add("Salir", null, (_, _) => { _salir = true; Close(); });
         _bandeja = new NotifyIcon
         {
             Icon = Icon,
             Text = "SinBordes",
             Visible = true,
-            ContextMenuStrip = menuBandeja,
         };
         _bandeja.DoubleClick += (_, _) => MostrarDesdeBandeja();
+        RehacerMenuBandeja();
 
         // Watcher: aplica borderless solo a los juegos de la biblioteca según arrancan
         _watcher = new System.Windows.Forms.Timer { Interval = 2000 };
@@ -196,13 +197,34 @@ public sealed class MainForm : Form
         base.SetVisibleCore(value);
     }
 
+    private void RehacerMenuBandeja()
+    {
+        var menuBandeja = new ContextMenuStrip();
+        menuBandeja.Items.Add(Textos.T("bandeja.mostrar"), null, (_, _) => MostrarDesdeBandeja());
+        menuBandeja.Items.Add(new ToolStripSeparator());
+        menuBandeja.Items.Add(Textos.T("bandeja.salir"), null, (_, _) => { _salir = true; Close(); });
+        _bandeja.ContextMenuStrip?.Dispose();
+        _bandeja.ContextMenuStrip = menuBandeja;
+    }
+
+    private void CambiarIdioma(string codigo)
+    {
+        _config.Idioma = codigo;
+        Textos.Idioma = codigo;
+        ConfigStore.Guardar(_config);
+        _botonActualizar.Text = Textos.T("boton.actualizar");
+        _botonAjustes.Text = Textos.T("boton.ajustes");
+        RehacerMenuBandeja();
+        Refrescar(); // botones contextuales, barra de estado y filas
+    }
+
     private void OcultarABandeja()
     {
         Hide();
         if (_globoBandeja) return;
         _globoBandeja = true;
         _bandeja.BalloonTipTitle = "SinBordes";
-        _bandeja.BalloonTipText = "Sigue en la bandeja: el watcher aplica borderless a tu biblioteca.";
+        _bandeja.BalloonTipText = Textos.T("bandeja.globo");
         _bandeja.ShowBalloonTip(1500);
     }
 
@@ -256,18 +278,18 @@ public sealed class MainForm : Form
     {
         if (_lista.Seleccion is not { } v)
         {
-            _estado.Text = "Selecciona una ventana de la lista.";
+            _estado.Text = Textos.T("estado.selecciona");
             return;
         }
         if (EsFavorito(v.ProcessName))
         {
             _config.Favoritos.RemoveAll(f => f.Equals(v.ProcessName, StringComparison.OrdinalIgnoreCase));
-            _estado.Text = $"{v.ProcessName} fuera de la biblioteca.";
+            _estado.Text = Textos.F("estado.fueraBiblio", v.ProcessName);
         }
         else
         {
             _config.Favoritos.Add(v.ProcessName);
-            _estado.Text = $"{v.ProcessName} en la biblioteca: borderless automático al detectarlo.";
+            _estado.Text = Textos.F("estado.enBiblio", v.ProcessName);
         }
         ConfigStore.Guardar(_config);
         Refrescar();
@@ -292,7 +314,7 @@ public sealed class MainForm : Form
         }
         _bandeja.BalloonTipTitle = "SinBordes";
         _bandeja.BalloonTipText = exito
-            ? (aplicada ? "Ventana restaurada." : "Ventana sin bordes.")
+            ? (aplicada ? Textos.T("bandeja.restaurada") : Textos.T("bandeja.sinbordes"))
             : error;
         _bandeja.ShowBalloonTip(1200);
         if (Visible) Refrescar();
@@ -302,7 +324,7 @@ public sealed class MainForm : Form
     {
         if (_lista.Seleccion is not { } v || v.Hwnd == IntPtr.Zero)
         {
-            _estado.Text = "Selecciona una ventana en ejecución.";
+            _estado.Text = Textos.T("estado.seleccionaViva");
             return;
         }
         NativeMethods.SetForegroundWindow(v.Hwnd);
@@ -315,7 +337,7 @@ public sealed class MainForm : Form
             Tecla(NativeMethods.VK_MENU, soltar: true),
         };
         NativeMethods.SendInput((uint)pulsos.Length, pulsos, Marshal.SizeOf<NativeMethods.INPUT>());
-        _estado.Text = $"Alt+Intro enviado a «{v.Title}».";
+        _estado.Text = Textos.F("estado.altintro", v.Title);
     }
 
     private static NativeMethods.INPUT Tecla(ushort vk, bool soltar) => new()
@@ -337,7 +359,7 @@ public sealed class MainForm : Form
         }
         catch
         {
-            _estado.Text = "No se pudo tocar el autoarranque en el registro.";
+            _estado.Text = Textos.T("estado.autoarranqueError");
         }
     }
 
@@ -500,9 +522,9 @@ public sealed class MainForm : Form
         bool aplicada = !apagada && BorderlessService.TieneEstadoGuardado(v.Hwnd);
         int derecha = zona.Right - 10;
         if (aplicada)
-            derecha = Pildora(g, zona, "sin bordes", _acento);
+            derecha = Pildora(g, zona, Textos.T("pill.sinbordes"), _acento);
         else if (v.Elevada)
-            derecha = Pildora(g, zona, "admin", Color.FromArgb(230, 126, 34)); // UIPI bloqueará: avisar
+            derecha = Pildora(g, zona, Textos.T("pill.admin"), Color.FromArgb(230, 126, 34)); // UIPI bloqueará: avisar
 
         var zonaTexto = new Rectangle(zona.X + 14, zona.Y + 4, derecha - zona.X - 14, zona.Height - 8);
         var lineaNombre = new Rectangle(zonaTexto.X, zonaTexto.Y, zonaTexto.Width, zonaTexto.Height / 2);
@@ -558,13 +580,13 @@ public sealed class MainForm : Form
     {
         var menu = new ContextMenuStrip();
 
-        var colores = new ToolStripMenuItem("Colores");
-        colores.DropDownItems.Add("Fondo…", null, (_, _) => ElegirColor(c => _config.ColorFondo = c, _fondo));
-        colores.DropDownItems.Add("Botones y barras…", null, (_, _) => ElegirColor(c => _config.ColorPanel = c, _panel));
-        colores.DropDownItems.Add("Acento…", null, (_, _) => ElegirColor(c => _config.ColorAcento = c, _acento));
-        colores.DropDownItems.Add("Texto…", null, (_, _) => ElegirColor(c => _config.ColorTexto = c, _texto));
+        var colores = new ToolStripMenuItem(Textos.T("menu.colores"));
+        colores.DropDownItems.Add(Textos.T("menu.fondo"), null, (_, _) => ElegirColor(c => _config.ColorFondo = c, _fondo));
+        colores.DropDownItems.Add(Textos.T("menu.panel"), null, (_, _) => ElegirColor(c => _config.ColorPanel = c, _panel));
+        colores.DropDownItems.Add(Textos.T("menu.acento"), null, (_, _) => ElegirColor(c => _config.ColorAcento = c, _acento));
+        colores.DropDownItems.Add(Textos.T("menu.texto"), null, (_, _) => ElegirColor(c => _config.ColorTexto = c, _texto));
         colores.DropDownItems.Add(new ToolStripSeparator());
-        colores.DropDownItems.Add("Restablecer", null, (_, _) =>
+        colores.DropDownItems.Add(Textos.T("menu.restablecer"), null, (_, _) =>
         {
             var defecto = new Config();
             _config.ColorFondo = defecto.ColorFondo;
@@ -573,11 +595,21 @@ public sealed class MainForm : Form
             _config.ColorTexto = defecto.ColorTexto;
             ConfigStore.Guardar(_config);
             AplicarTema();
-            _estado.Text = "Colores por defecto.";
+            _estado.Text = Textos.T("estado.coloresDefecto");
         });
         menu.Items.Add(colores);
 
-        var redondeo = new ToolStripMenuItem("Esquinas redondeadas")
+        var idioma = new ToolStripMenuItem(Textos.T("menu.idioma"));
+        foreach (var (codigo, nombre) in Textos.Disponibles)
+        {
+            var opcion = new ToolStripMenuItem(nombre) { Checked = Textos.Idioma == codigo };
+            string elegido = codigo;
+            opcion.Click += (_, _) => CambiarIdioma(elegido);
+            idioma.DropDownItems.Add(opcion);
+        }
+        menu.Items.Add(idioma);
+
+        var redondeo = new ToolStripMenuItem(Textos.T("menu.esquinas"))
         {
             Checked = _config.BordesRedondeados,
             CheckOnClick = true,
@@ -590,22 +622,19 @@ public sealed class MainForm : Form
         };
         menu.Items.Add(redondeo);
 
-        menu.Items.Add(Alternador("Arrancar con Windows", _config.IniciarConWindows, valor =>
+        menu.Items.Add(Alternador(Textos.T("menu.autoarranque"), _config.IniciarConWindows, valor =>
         {
             _config.IniciarConWindows = valor;
             ConfigurarAutoarranque(valor);
         }));
-        menu.Items.Add(Alternador("Arrancar minimizado en bandeja", _config.ArrancarMinimizado,
+        menu.Items.Add(Alternador(Textos.T("menu.arrancarMin"), _config.ArrancarMinimizado,
             valor => _config.ArrancarMinimizado = valor));
-        menu.Items.Add(Alternador("Al cerrar, minimizar a la bandeja", _config.CerrarMinimiza,
+        menu.Items.Add(Alternador(Textos.T("menu.cerrarMin"), _config.CerrarMinimiza,
             valor => _config.CerrarMinimiza = valor));
 
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Enviar Alt+Intro a la seleccionada", null, (_, _) => EnviarAltIntro());
-        menu.Items.Add(new ToolStripMenuItem("Hotkey: Ctrl+Alt+B — borderless a la ventana activa")
-        {
-            Enabled = false,
-        });
+        menu.Items.Add(Textos.T("menu.altintro"), null, (_, _) => EnviarAltIntro());
+        menu.Items.Add(new ToolStripMenuItem(Textos.T("menu.hotkey")) { Enabled = false });
 
         menu.Show(Cursor.Position);
     }
@@ -628,7 +657,7 @@ public sealed class MainForm : Form
         asignar(ColorTranslator.ToHtml(dialogo.Color));
         ConfigStore.Guardar(_config);
         AplicarTema();
-        _estado.Text = "Colores guardados.";
+        _estado.Text = Textos.T("estado.coloresGuardados");
     }
 
     private void Refrescar() => RefrescarCon(WindowEnumerator.Listar());
@@ -639,11 +668,11 @@ public sealed class MainForm : Form
         var visibles = new List<WindowInfo>(ventanas);
         foreach (string favorito in _config.Favoritos)
             if (!ventanas.Any(v => v.ProcessName.Equals(favorito, StringComparison.OrdinalIgnoreCase)))
-                visibles.Add(new WindowInfo(IntPtr.Zero, "Sin ejecutar — borderless automático al arrancar", favorito, 0));
+                visibles.Add(new WindowInfo(IntPtr.Zero, Textos.T("fila.apagada"), favorito, 0));
         _lista.Cargar(visibles);
         _estado.Text = _config.Favoritos.Count > 0
-            ? $"{ventanas.Count} ventanas · {_config.Favoritos.Count} en biblioteca."
-            : $"{ventanas.Count} ventanas.";
+            ? Textos.F("estado.ventanasBiblio", ventanas.Count, _config.Favoritos.Count)
+            : Textos.F("estado.ventanas", ventanas.Count);
         ActualizarBotonAccion();
     }
 
@@ -652,23 +681,23 @@ public sealed class MainForm : Form
     {
         var v = _lista.Seleccion;
         _botonAccion.Text = v is not null && v.Hwnd != IntPtr.Zero && BorderlessService.TieneEstadoGuardado(v.Hwnd)
-            ? "Deshacer"
-            : "Hacer borderless";
+            ? Textos.T("boton.deshacer")
+            : Textos.T("boton.aplicar");
         _botonFavorito.Text = v is not null && EsFavorito(v.ProcessName)
-            ? "Quitar de biblioteca"
-            : "Guardar en biblioteca";
+            ? Textos.T("boton.quitar")
+            : Textos.T("boton.guardar");
     }
 
     private void AccionPrincipal()
     {
         if (_lista.Seleccion is not { } v)
         {
-            _estado.Text = "Selecciona una ventana de la lista.";
+            _estado.Text = Textos.T("estado.selecciona");
             return;
         }
         if (v.Hwnd == IntPtr.Zero)
         {
-            _estado.Text = "Ese juego no está en ejecución: el watcher actuará cuando arranque.";
+            _estado.Text = Textos.T("estado.noEjecucion");
             return;
         }
         bool aplicada = BorderlessService.TieneEstadoGuardado(v.Hwnd);
@@ -683,8 +712,8 @@ public sealed class MainForm : Form
         }
         _estado.Text = exito
             ? (aplicada
-                ? $"«{v.Title}» ({v.ProcessName}) restaurada. Si está en la biblioteca, volverá al relanzar el juego."
-                : $"«{v.Title}» ({v.ProcessName}) ahora está sin bordes.")
+                ? Textos.F("estado.restaurada", v.Title, v.ProcessName)
+                : Textos.F("estado.aplicada", v.Title, v.ProcessName))
             : error;
         Refrescar();
     }

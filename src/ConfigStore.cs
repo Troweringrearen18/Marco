@@ -13,6 +13,7 @@ public sealed class Config
     public int VentanaAlto { get; set; }
     public List<string> Favoritos { get; set; } = new();
     public bool ArrancarMinimizado { get; set; }
+    public string Idioma { get; set; } = "en";
     public bool IniciarConWindows { get; set; }
     public bool CerrarMinimiza { get; set; }   // ✕ esconde a la bandeja en vez de salir
 }
