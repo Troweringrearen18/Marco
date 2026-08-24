@@ -411,11 +411,11 @@ public sealed class MainForm : Form
     private static readonly string[] PixelesIcono =
     {
         "................",
-        "................",
-        "............DD..",
-        "..DDDDDDDDD..D..",
-        "..DGGGGGGGGGG...",
-        "..DGWWGGGGGGG...",
+        "...........DDD..",
+        ".............D..",
+        "..DDDDDDDDD.....",
+        "..DGGGGGGGGD....",
+        "..DGWWGGGGGGD...",
         "..DGWGGGGGGGGD..",
         "..DGGGGGGGGGGD..",
         "..DGGGGGGGGGGD..",
