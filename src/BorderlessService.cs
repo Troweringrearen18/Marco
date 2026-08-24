@@ -26,7 +26,20 @@ public static class BorderlessService
     private static readonly string RutaEstado = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SinBordes", "estado.json");
 
-    private static readonly Dictionary<long, EstadoVentana> Guardadas = Cargar();
+    private static readonly Dictionary<long, EstadoVentana> Guardadas;
+
+    static BorderlessService()
+    {
+        Guardadas = Cargar();
+        // Los hwnd se reciclan: el estado de una ventana ya muerta no se puede restaurar,
+        // y si otro proceso hereda ese hwnd se le aplicarían estilos ajenos
+        var muertas = Guardadas.Keys.Where(k => !NativeMethods.IsWindow(new IntPtr(k))).ToList();
+        if (muertas.Count > 0)
+        {
+            foreach (var k in muertas) Guardadas.Remove(k);
+            Persistir();
+        }
+    }
 
     public static bool TieneEstadoGuardado(IntPtr hwnd) => Guardadas.ContainsKey(hwnd.ToInt64());
 
