@@ -11,8 +11,27 @@ static class Program
         Textos.Idioma = ConfigStore.Cargar().Idioma;
 
         // Modo CLI para scripts y pruebas: Marco --apply <proceso> | --restore <proceso>
+        // (el CLI queda fuera del candado de instancia única a propósito)
         if (args.Length >= 2 && args[0] is "--apply" or "--restore")
             return Cli(args[0], args[1]);
+
+        // Una sola instancia de la GUI: la segunda despierta a la primera y se retira
+        using var unica = new Mutex(initiallyOwned: true, @"Local\Marco.InstanciaUnica", out bool primera);
+        if (!primera)
+        {
+            IntPtr existente = NativeMethods.FindWindow(null, "Marco");
+            if (existente != IntPtr.Zero)
+            {
+                NativeMethods.ShowWindow(existente, NativeMethods.SW_RESTORE);
+                NativeMethods.SetForegroundWindow(existente);
+            }
+            else
+            {
+                MessageBox.Show(Textos.T("app.yaAbierto"), "Marco",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            return 0;
+        }
 
         Application.Run(new MainForm());
         return 0;

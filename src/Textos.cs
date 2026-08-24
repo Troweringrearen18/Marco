@@ -103,6 +103,9 @@ public static class Textos
             ["err.sinEstado"] = "No saved state for that window.",
             ["err.restaurar"] = "SetWindowPos failed while restoring.",
             ["cli.sinVentanas"] = "No visible windows for process “{0}”.",
+            ["ayuda.titulo"] = "Help",
+            ["ayuda.texto"] = "• Put the game in WINDOWED mode — Marco removes the borders and stretches it over the whole screen.\n\n• No windowed option? Try Alt+Enter in-game, add -window or -windowed to the Steam launch options, or look the game up on PCGamingWiki.\n\n• Library: save a game and borderless will be applied automatically every time it launches.\n\n• Ctrl+Alt+B toggles borderless on the active window.\n\n• “admin” tag: the game runs as administrator and Windows blocks Marco. Remove “Run as administrator” from the game's compatibility options, or run Marco as administrator.\n\n• Some old games need Windows 7 compatibility mode (game .exe → Properties → Compatibility) — enable it WITHOUT “Run as administrator”.\n\n• Exclusive fullscreen cannot be changed from outside: the game must be in a window first.\n\n• If a game freezes when you Alt+Tab during its intro video, that's the game — avoid switching windows during intros.",
+            ["app.yaAbierto"] = "Marco is already running: look for it in the system tray.",
         },
         ["es"] = new()
         {
@@ -155,6 +158,9 @@ public static class Textos
             ["err.sinEstado"] = "No hay estado guardado de esa ventana.",
             ["err.restaurar"] = "SetWindowPos falló al restaurar.",
             ["cli.sinVentanas"] = "No hay ventanas visibles del proceso «{0}».",
+            ["ayuda.titulo"] = "Ayuda",
+            ["ayuda.texto"] = "• Pon el juego en modo VENTANA — Marco quita los bordes y lo estira a toda la pantalla.\n\n• ¿No hay opción de ventana? Prueba Alt+Intro dentro del juego, añade -window o -windowed en las opciones de lanzamiento de Steam, o busca el juego en PCGamingWiki.\n\n• Biblioteca: guarda un juego y el borderless se aplicará solo cada vez que arranque.\n\n• Ctrl+Alt+B alterna el borderless de la ventana activa.\n\n• Píldora «admin»: el juego corre como administrador y Windows bloquea a Marco. Quita «Ejecutar como administrador» de las opciones de compatibilidad del juego, o ejecuta Marco como administrador.\n\n• Algunos juegos viejos necesitan el modo de compatibilidad con Windows 7 (.exe del juego → Propiedades → Compatibilidad) — actívalo SIN «Ejecutar como administrador».\n\n• El fullscreen exclusivo no se puede tocar desde fuera: el juego debe estar antes en ventana.\n\n• Si un juego se congela al hacer Alt+Tab durante su vídeo de intro, es cosa del juego: no cambies de ventana durante los intros.",
+            ["app.yaAbierto"] = "Marco ya está en ejecución: búscalo en la bandeja del sistema.",
         },
         ["es-419"] = new()
         {
@@ -207,6 +213,9 @@ public static class Textos
             ["err.sinEstado"] = "No hay estado guardado de esa ventana.",
             ["err.restaurar"] = "SetWindowPos falló al restaurar.",
             ["cli.sinVentanas"] = "No hay ventanas visibles del proceso «{0}».",
+            ["ayuda.titulo"] = "Ayuda",
+            ["ayuda.texto"] = "• Poné el juego en modo VENTANA — Marco quita los bordes y lo estira a toda la pantalla.\n\n• ¿No hay opción de ventana? Probá Alt+Enter dentro del juego, agregá -window o -windowed en las opciones de lanzamiento de Steam, o buscá el juego en PCGamingWiki.\n\n• Biblioteca: guardá un juego y los bordes se quitarán solos cada vez que inicie.\n\n• Ctrl+Alt+B alterna los bordes de la ventana activa.\n\n• Etiqueta «admin»: el juego corre como administrador y Windows bloquea a Marco. Quitá «Ejecutar como administrador» de las opciones de compatibilidad del juego, o ejecutá Marco como administrador.\n\n• Algunos juegos viejos necesitan el modo de compatibilidad con Windows 7 (.exe del juego → Propiedades → Compatibilidad) — activalo SIN «Ejecutar como administrador».\n\n• La pantalla completa exclusiva no se puede tocar desde afuera: el juego debe estar antes en ventana.\n\n• Si un juego se congela al hacer Alt+Tab durante su video de intro, es cosa del juego: no cambies de ventana durante los intros.",
+            ["app.yaAbierto"] = "Marco ya está corriendo: buscalo en la bandeja del sistema.",
         },
         ["pt"] = new()
         {
@@ -259,6 +268,9 @@ public static class Textos
             ["err.sinEstado"] = "Não há estado salvo dessa janela.",
             ["err.restaurar"] = "SetWindowPos falhou ao restaurar.",
             ["cli.sinVentanas"] = "Nenhuma janela visível do processo “{0}”.",
+            ["ayuda.titulo"] = "Ajuda",
+            ["ayuda.texto"] = "• Coloque o jogo em modo JANELA — o Marco remove as bordas e o estica pela tela inteira.\n\n• Sem opção de janela? Tente Alt+Enter dentro do jogo, adicione -window ou -windowed nas opções de inicialização da Steam, ou procure o jogo no PCGamingWiki.\n\n• Biblioteca: salve um jogo e o sem bordas será aplicado automaticamente sempre que ele iniciar.\n\n• Ctrl+Alt+B alterna o sem bordas da janela ativa.\n\n• Etiqueta “admin”: o jogo roda como administrador e o Windows bloqueia o Marco. Remova “Executar como administrador” das opções de compatibilidade do jogo, ou execute o Marco como administrador.\n\n• Alguns jogos antigos precisam do modo de compatibilidade com Windows 7 (.exe do jogo → Propriedades → Compatibilidade) — ative SEM “Executar como administrador”.\n\n• A tela cheia exclusiva não pode ser alterada por fora: o jogo precisa estar antes em janela.\n\n• Se um jogo congela ao dar Alt+Tab durante o vídeo de introdução, é coisa do jogo: não troque de janela durante as intros.",
+            ["app.yaAbierto"] = "O Marco já está em execução: procure-o na bandeja do sistema.",
         },
         ["pt-PT"] = new()
         {
@@ -311,6 +323,9 @@ public static class Textos
             ["err.sinEstado"] = "Não há estado guardado dessa janela.",
             ["err.restaurar"] = "SetWindowPos falhou ao restaurar.",
             ["cli.sinVentanas"] = "Nenhuma janela visível do processo “{0}”.",
+            ["ayuda.titulo"] = "Ajuda",
+            ["ayuda.texto"] = "• Coloque o jogo em modo JANELA — o Marco remove as margens e estica-o por todo o ecrã.\n\n• Sem opção de janela? Experimente Alt+Enter dentro do jogo, adicione -window ou -windowed nas opções de arranque do Steam, ou procure o jogo no PCGamingWiki.\n\n• Biblioteca: guarde um jogo e o sem margens será aplicado automaticamente sempre que arrancar.\n\n• Ctrl+Alt+B alterna o sem margens da janela ativa.\n\n• Etiqueta “admin”: o jogo corre como administrador e o Windows bloqueia o Marco. Remova “Executar como administrador” das opções de compatibilidade do jogo, ou execute o Marco como administrador.\n\n• Alguns jogos antigos precisam do modo de compatibilidade com Windows 7 (.exe do jogo → Propriedades → Compatibilidade) — ative SEM “Executar como administrador”.\n\n• O ecrã inteiro exclusivo não pode ser alterado por fora: o jogo tem de estar antes em janela.\n\n• Se um jogo congela ao fazer Alt+Tab durante o vídeo de introdução, é do jogo: não mude de janela durante as intros.",
+            ["app.yaAbierto"] = "O Marco já está em execução: procure-o na área de notificação.",
         },
         ["fr"] = new()
         {
@@ -363,6 +378,9 @@ public static class Textos
             ["err.sinEstado"] = "Aucun état enregistré pour cette fenêtre.",
             ["err.restaurar"] = "SetWindowPos a échoué à la restauration.",
             ["cli.sinVentanas"] = "Aucune fenêtre visible pour le processus « {0} ».",
+            ["ayuda.titulo"] = "Aide",
+            ["ayuda.texto"] = "• Mettez le jeu en mode FENÊTRÉ — Marco supprime les bordures et l'étire sur tout l'écran.\n\n• Pas d'option fenêtrée ? Essayez Alt+Entrée dans le jeu, ajoutez -window ou -windowed aux options de lancement Steam, ou cherchez le jeu sur PCGamingWiki.\n\n• Bibliothèque : enregistrez un jeu et le sans-bordures s'appliquera automatiquement à chaque lancement.\n\n• Ctrl+Alt+B bascule le sans-bordures de la fenêtre active.\n\n• Étiquette « admin » : le jeu tourne en administrateur et Windows bloque Marco. Retirez « Exécuter en tant qu'administrateur » des options de compatibilité du jeu, ou lancez Marco en administrateur.\n\n• Certains vieux jeux ont besoin du mode de compatibilité Windows 7 (.exe du jeu → Propriétés → Compatibilité) — activez-le SANS « Exécuter en tant qu'administrateur ».\n\n• Le plein écran exclusif ne peut pas être modifié de l'extérieur : le jeu doit d'abord être en fenêtre.\n\n• Si un jeu gèle quand vous faites Alt+Tab pendant sa vidéo d'intro, c'est le jeu : évitez de changer de fenêtre pendant les intros.",
+            ["app.yaAbierto"] = "Marco est déjà lancé : cherchez-le dans la zone de notification.",
         },
         ["de"] = new()
         {
@@ -415,6 +433,9 @@ public static class Textos
             ["err.sinEstado"] = "Kein gespeicherter Zustand für dieses Fenster.",
             ["err.restaurar"] = "SetWindowPos schlug beim Wiederherstellen fehl.",
             ["cli.sinVentanas"] = "Keine sichtbaren Fenster für Prozess „{0}“.",
+            ["ayuda.titulo"] = "Hilfe",
+            ["ayuda.texto"] = "• Stelle das Spiel auf FENSTERMODUS — Marco entfernt die Ränder und streckt es über den ganzen Bildschirm.\n\n• Keine Fensteroption? Probiere Alt+Eingabe im Spiel, füge -window oder -windowed zu den Steam-Startoptionen hinzu, oder schlage das Spiel im PCGamingWiki nach.\n\n• Bibliothek: Spiel speichern, und Randlos wird bei jedem Start automatisch angewendet.\n\n• Strg+Alt+B schaltet Randlos für das aktive Fenster um.\n\n• „Admin“-Marke: das Spiel läuft als Administrator und Windows blockiert Marco. Entferne „Als Administrator ausführen“ aus den Kompatibilitätsoptionen des Spiels, oder starte Marco als Administrator.\n\n• Manche alten Spiele brauchen den Windows-7-Kompatibilitätsmodus (Spiel-.exe → Eigenschaften → Kompatibilität) — aktiviere ihn OHNE „Als Administrator ausführen“.\n\n• Exklusiver Vollbildmodus lässt sich von außen nicht ändern: das Spiel muss zuerst im Fenster laufen.\n\n• Friert ein Spiel ein, wenn du während des Introvideos Alt+Tab drückst, liegt das am Spiel: während Intros nicht das Fenster wechseln.",
+            ["app.yaAbierto"] = "Marco läuft bereits: schau im Infobereich nach.",
         },
         ["ru"] = new()
         {
@@ -467,6 +488,9 @@ public static class Textos
             ["err.sinEstado"] = "Нет сохранённого состояния этого окна.",
             ["err.restaurar"] = "SetWindowPos не смог восстановить окно.",
             ["cli.sinVentanas"] = "Нет видимых окон процесса «{0}».",
+            ["ayuda.titulo"] = "Справка",
+            ["ayuda.texto"] = "• Переведите игру в ОКОННЫЙ режим — Marco уберёт рамки и растянет окно на весь экран.\n\n• Нет оконного режима? Попробуйте Alt+Enter в игре, добавьте -window или -windowed в параметры запуска Steam, или найдите игру на PCGamingWiki.\n\n• Библиотека: сохраните игру, и рамки будут убираться автоматически при каждом запуске.\n\n• Ctrl+Alt+B переключает рамки активного окна.\n\n• Метка «админ»: игра запущена от администратора, и Windows блокирует Marco. Уберите «Запускать от имени администратора» в свойствах совместимости игры, или запустите Marco от администратора.\n\n• Некоторым старым играм нужен режим совместимости с Windows 7 (.exe игры → Свойства → Совместимость) — включайте его БЕЗ «Запускать от имени администратора».\n\n• Эксклюзивный полноэкранный режим изменить извне нельзя: игра сначала должна быть в окне.\n\n• Если игра зависает при Alt+Tab во время вступительного ролика — это особенность игры: не переключайте окна во время заставок.",
+            ["app.yaAbierto"] = "Marco уже запущен: найдите его в системном трее.",
         },
         ["it"] = new()
         {
@@ -519,6 +543,9 @@ public static class Textos
             ["err.sinEstado"] = "Nessuno stato salvato per quella finestra.",
             ["err.restaurar"] = "SetWindowPos non è riuscito a ripristinare.",
             ["cli.sinVentanas"] = "Nessuna finestra visibile per il processo “{0}”.",
+            ["ayuda.titulo"] = "Aiuto",
+            ["ayuda.texto"] = "• Metti il gioco in modalità FINESTRA — Marco rimuove i bordi e lo estende su tutto lo schermo.\n\n• Nessuna opzione finestra? Prova Alt+Invio nel gioco, aggiungi -window o -windowed alle opzioni di avvio di Steam, o cerca il gioco su PCGamingWiki.\n\n• Libreria: salva un gioco e il senza bordi verrà applicato automaticamente a ogni avvio.\n\n• Ctrl+Alt+B alterna il senza bordi della finestra attiva.\n\n• Etichetta “admin”: il gioco gira come amministratore e Windows blocca Marco. Rimuovi “Esegui come amministratore” dalle opzioni di compatibilità del gioco, o esegui Marco come amministratore.\n\n• Alcuni vecchi giochi richiedono la modalità compatibilità Windows 7 (.exe del gioco → Proprietà → Compatibilità) — attivala SENZA “Esegui come amministratore”.\n\n• Lo schermo intero esclusivo non si può modificare dall'esterno: il gioco deve prima essere in finestra.\n\n• Se un gioco si blocca facendo Alt+Tab durante il video introduttivo, è colpa del gioco: non cambiare finestra durante le intro.",
+            ["app.yaAbierto"] = "Marco è già in esecuzione: cercalo nell'area di notifica.",
         },
         ["nl"] = new()
         {
@@ -571,6 +598,9 @@ public static class Textos
             ["err.sinEstado"] = "Geen opgeslagen staat voor dat venster.",
             ["err.restaurar"] = "SetWindowPos faalde bij het herstellen.",
             ["cli.sinVentanas"] = "Geen zichtbare vensters voor proces “{0}”.",
+            ["ayuda.titulo"] = "Hulp",
+            ["ayuda.texto"] = "• Zet het spel in VENSTERMODUS — Marco verwijdert de randen en rekt het uit over het hele scherm.\n\n• Geen vensteroptie? Probeer Alt+Enter in het spel, voeg -window of -windowed toe aan de Steam-opstartopties, of zoek het spel op PCGamingWiki.\n\n• Bibliotheek: sla een spel op en randloos wordt automatisch toegepast bij elke start.\n\n• Ctrl+Alt+B schakelt randloos voor het actieve venster.\n\n• 'admin'-label: het spel draait als administrator en Windows blokkeert Marco. Verwijder 'Als administrator uitvoeren' uit de compatibiliteitsopties van het spel, of start Marco als administrator.\n\n• Sommige oude spellen hebben de Windows 7-compatibiliteitsmodus nodig (spel-.exe → Eigenschappen → Compatibiliteit) — schakel die in ZONDER 'Als administrator uitvoeren'.\n\n• Exclusief volledig scherm is van buitenaf niet aan te passen: het spel moet eerst in een venster draaien.\n\n• Bevriest een spel als je Alt+Tab doet tijdens de introvideo, dan ligt dat aan het spel: wissel niet van venster tijdens intro's.",
+            ["app.yaAbierto"] = "Marco draait al: zoek het in het systeemvak.",
         },
         ["pl"] = new()
         {
@@ -623,6 +653,9 @@ public static class Textos
             ["err.sinEstado"] = "Brak zapisanego stanu tego okna.",
             ["err.restaurar"] = "SetWindowPos nie zdołał przywrócić okna.",
             ["cli.sinVentanas"] = "Brak widocznych okien procesu „{0}”.",
+            ["ayuda.titulo"] = "Pomoc",
+            ["ayuda.texto"] = "• Ustaw grę w trybie OKIENKOWYM — Marco usunie ramki i rozciągnie okno na cały ekran.\n\n• Brak trybu okienkowego? Spróbuj Alt+Enter w grze, dodaj -window lub -windowed do opcji uruchamiania Steam, albo sprawdź grę na PCGamingWiki.\n\n• Biblioteka: zapisz grę, a ramki będą usuwane automatycznie przy każdym uruchomieniu.\n\n• Ctrl+Alt+B przełącza ramki aktywnego okna.\n\n• Znacznik „admin”: gra działa jako administrator i Windows blokuje Marco. Usuń „Uruchom jako administrator” z opcji zgodności gry, albo uruchom Marco jako administrator.\n\n• Niektóre stare gry wymagają trybu zgodności z Windows 7 (.exe gry → Właściwości → Zgodność) — włącz go BEZ „Uruchom jako administrator”.\n\n• Ekskluzywnego pełnego ekranu nie da się zmienić z zewnątrz: gra musi najpierw działać w oknie.\n\n• Jeśli gra zawiesza się przy Alt+Tab podczas filmu intro, to wina gry: nie przełączaj okien podczas intr.",
+            ["app.yaAbierto"] = "Marco już działa: poszukaj go w zasobniku systemowym.",
         },
         ["tr"] = new()
         {
@@ -675,6 +708,9 @@ public static class Textos
             ["err.sinEstado"] = "Bu pencere için kayıtlı durum yok.",
             ["err.restaurar"] = "SetWindowPos geri yüklemeyi başaramadı.",
             ["cli.sinVentanas"] = "“{0}” işlemi için görünür pencere yok.",
+            ["ayuda.titulo"] = "Yardım",
+            ["ayuda.texto"] = "• Oyunu PENCERE moduna alın — Marco kenarlıkları kaldırır ve pencereyi tüm ekrana yayar.\n\n• Pencere seçeneği yok mu? Oyun içinde Alt+Enter deneyin, Steam başlatma seçeneklerine -window veya -windowed ekleyin, ya da oyunu PCGamingWiki'de arayın.\n\n• Kitaplık: bir oyunu kaydedin, her başlatıldığında kenarlıklar otomatik kaldırılır.\n\n• Ctrl+Alt+B etkin pencerenin kenarlıklarını açıp kapatır.\n\n• “yönetici” etiketi: oyun yönetici olarak çalışıyor ve Windows Marco'yu engelliyor. Oyunun uyumluluk seçeneklerinden “Yönetici olarak çalıştır”ı kaldırın veya Marco'yu yönetici olarak çalıştırın.\n\n• Bazı eski oyunlar Windows 7 uyumluluk modu ister (oyunun .exe'si → Özellikler → Uyumluluk) — “Yönetici olarak çalıştır” OLMADAN etkinleştirin.\n\n• Özel tam ekran dışarıdan değiştirilemez: oyun önce pencere modunda olmalı.\n\n• Bir oyun intro videosunda Alt+Tab yapınca donuyorsa bu oyunun sorunudur: introlar sırasında pencere değiştirmeyin.",
+            ["app.yaAbierto"] = "Marco zaten çalışıyor: sistem tepsisine bakın.",
         },
         ["cs"] = new()
         {
@@ -727,6 +763,9 @@ public static class Textos
             ["err.sinEstado"] = "Žádný uložený stav tohoto okna.",
             ["err.restaurar"] = "SetWindowPos selhal při obnovování.",
             ["cli.sinVentanas"] = "Žádná viditelná okna procesu „{0}“.",
+            ["ayuda.titulo"] = "Nápověda",
+            ["ayuda.texto"] = "• Přepněte hru do REŽIMU OKNA — Marco odstraní rámečky a roztáhne okno přes celou obrazovku.\n\n• Chybí režim okna? Zkuste Alt+Enter ve hře, přidejte -window nebo -windowed do parametrů spuštění ve Steamu, nebo hru vyhledejte na PCGamingWiki.\n\n• Knihovna: uložte hru a rámečky se budou odstraňovat automaticky při každém spuštění.\n\n• Ctrl+Alt+B přepíná rámečky aktivního okna.\n\n• Značka „admin“: hra běží jako správce a Windows blokuje Marco. Odeberte „Spustit jako správce“ z možností kompatibility hry, nebo spusťte Marco jako správce.\n\n• Některé staré hry potřebují režim kompatibility s Windows 7 (.exe hry → Vlastnosti → Kompatibilita) — zapněte jej BEZ „Spustit jako správce“.\n\n• Exkluzivní celou obrazovku nelze změnit zvenčí: hra musí nejdřív běžet v okně.\n\n• Pokud hra zamrzne při Alt+Tab během úvodního videa, je to vlastnost hry: během intra nepřepínejte okna.",
+            ["app.yaAbierto"] = "Marco už běží: najdete ho v oznamovací oblasti.",
         },
         ["da"] = new()
         {
@@ -779,6 +818,9 @@ public static class Textos
             ["err.sinEstado"] = "Ingen gemt tilstand for det vindue.",
             ["err.restaurar"] = "SetWindowPos fejlede ved gendannelse.",
             ["cli.sinVentanas"] = "Ingen synlige vinduer for processen “{0}”.",
+            ["ayuda.titulo"] = "Hjælp",
+            ["ayuda.texto"] = "• Sæt spillet i VINDUESTILSTAND — Marco fjerner rammerne og strækker vinduet over hele skærmen.\n\n• Ingen vinduesindstilling? Prøv Alt+Enter i spillet, tilføj -window eller -windowed til Steams startindstillinger, eller slå spillet op på PCGamingWiki.\n\n• Bibliotek: gem et spil, og rammeløs anvendes automatisk hver gang det starter.\n\n• Ctrl+Alt+B slår rammeløs til/fra for det aktive vindue.\n\n• “admin”-mærke: spillet kører som administrator, og Windows blokerer Marco. Fjern “Kør som administrator” fra spillets kompatibilitetsindstillinger, eller kør Marco som administrator.\n\n• Nogle gamle spil kræver Windows 7-kompatibilitetstilstand (spillets .exe → Egenskaber → Kompatibilitet) — slå den til UDEN “Kør som administrator”.\n\n• Eksklusiv fuldskærm kan ikke ændres udefra: spillet skal først køre i et vindue.\n\n• Fryser et spil, når du trykker Alt+Tab under introvideoen, er det spillets skyld: skift ikke vindue under introer.",
+            ["app.yaAbierto"] = "Marco kører allerede: find det i systembakken.",
         },
         ["sv"] = new()
         {
@@ -831,6 +873,9 @@ public static class Textos
             ["err.sinEstado"] = "Inget sparat tillstånd för det fönstret.",
             ["err.restaurar"] = "SetWindowPos misslyckades med återställningen.",
             ["cli.sinVentanas"] = "Inga synliga fönster för processen ”{0}”.",
+            ["ayuda.titulo"] = "Hjälp",
+            ["ayuda.texto"] = "• Sätt spelet i FÖNSTERLÄGE — Marco tar bort ramarna och sträcker ut fönstret över hela skärmen.\n\n• Inget fönsterläge? Prova Alt+Enter i spelet, lägg till -window eller -windowed i Steams startalternativ, eller slå upp spelet på PCGamingWiki.\n\n• Bibliotek: spara ett spel så tillämpas ramlöst automatiskt varje gång det startar.\n\n• Ctrl+Alt+B växlar ramlöst för det aktiva fönstret.\n\n• ”admin”-märke: spelet körs som administratör och Windows blockerar Marco. Ta bort ”Kör som administratör” från spelets kompatibilitetsalternativ, eller kör Marco som administratör.\n\n• Vissa gamla spel behöver Windows 7-kompatibilitetsläge (spelets .exe → Egenskaper → Kompatibilitet) — aktivera det UTAN ”Kör som administratör”.\n\n• Exklusiv helskärm kan inte ändras utifrån: spelet måste först köras i ett fönster.\n\n• Fryser ett spel när du trycker Alt+Tab under introvideon är det spelets fel: byt inte fönster under intron.",
+            ["app.yaAbierto"] = "Marco körs redan: leta efter det i aktivitetsfältet.",
         },
         ["no"] = new()
         {
@@ -883,6 +928,9 @@ public static class Textos
             ["err.sinEstado"] = "Ingen lagret tilstand for det vinduet.",
             ["err.restaurar"] = "SetWindowPos mislyktes med gjenopprettingen.",
             ["cli.sinVentanas"] = "Ingen synlige vinduer for prosessen «{0}».",
+            ["ayuda.titulo"] = "Hjelp",
+            ["ayuda.texto"] = "• Sett spillet i VINDUSMODUS — Marco fjerner rammene og strekker vinduet over hele skjermen.\n\n• Ingen vindusmodus? Prøv Alt+Enter i spillet, legg til -window eller -windowed i Steams oppstartsalternativer, eller slå opp spillet på PCGamingWiki.\n\n• Bibliotek: lagre et spill, så brukes rammeløst automatisk hver gang det starter.\n\n• Ctrl+Alt+B veksler rammeløst for det aktive vinduet.\n\n• «admin»-merke: spillet kjører som administrator og Windows blokkerer Marco. Fjern «Kjør som administrator» fra spillets kompatibilitetsinnstillinger, eller kjør Marco som administrator.\n\n• Noen gamle spill trenger Windows 7-kompatibilitetsmodus (spillets .exe → Egenskaper → Kompatibilitet) — aktiver den UTEN «Kjør som administrator».\n\n• Eksklusiv fullskjerm kan ikke endres utenfra: spillet må først kjøre i et vindu.\n\n• Fryser et spill når du trykker Alt+Tab under introvideoen, er det spillets feil: ikke bytt vindu under introer.",
+            ["app.yaAbierto"] = "Marco kjører allerede: se etter det i systemstatusfeltet.",
         },
         ["fi"] = new()
         {
@@ -935,6 +983,9 @@ public static class Textos
             ["err.sinEstado"] = "Ikkunalle ei ole tallennettua tilaa.",
             ["err.restaurar"] = "SetWindowPos epäonnistui palautuksessa.",
             ["cli.sinVentanas"] = "Prosessilla ”{0}” ei ole näkyviä ikkunoita.",
+            ["ayuda.titulo"] = "Ohje",
+            ["ayuda.texto"] = "• Aseta peli IKKUNATILAAN — Marco poistaa reunukset ja venyttää ikkunan koko näytölle.\n\n• Ei ikkunatilaa? Kokeile Alt+Enter pelissä, lisää -window tai -windowed Steamin käynnistysasetuksiin, tai etsi peli PCGamingWikistä.\n\n• Kirjasto: tallenna peli, niin reunattomuus tulee automaattisesti aina sen käynnistyessä.\n\n• Ctrl+Alt+B vaihtaa aktiivisen ikkunan reunattomuuden.\n\n• ”admin”-merkki: peli toimii järjestelmänvalvojana ja Windows estää Marcon. Poista ”Suorita järjestelmänvalvojana” pelin yhteensopivuusasetuksista, tai suorita Marco järjestelmänvalvojana.\n\n• Jotkin vanhat pelit vaativat Windows 7 -yhteensopivuustilan (pelin .exe → Ominaisuudet → Yhteensopivuus) — ota se käyttöön ILMAN ”Suorita järjestelmänvalvojana”.\n\n• Eksklusiivista koko näyttöä ei voi muuttaa ulkopuolelta: pelin on ensin oltava ikkunassa.\n\n• Jos peli jäätyy, kun painat Alt+Tab introvideon aikana, vika on pelissä: älä vaihda ikkunaa introjen aikana.",
+            ["app.yaAbierto"] = "Marco on jo käynnissä: etsi se ilmaisinalueelta.",
         },
         ["hu"] = new()
         {
@@ -987,6 +1038,9 @@ public static class Textos
             ["err.sinEstado"] = "Nincs mentett állapot ehhez az ablakhoz.",
             ["err.restaurar"] = "A SetWindowPos nem tudta visszaállítani.",
             ["cli.sinVentanas"] = "Nincs látható ablaka a(z) „{0}” folyamatnak.",
+            ["ayuda.titulo"] = "Súgó",
+            ["ayuda.texto"] = "• Állítsd a játékot ABLAKOS módba — a Marco eltávolítja a kereteket, és a teljes képernyőre nyújtja az ablakot.\n\n• Nincs ablakos mód? Próbáld az Alt+Entert a játékban, add hozzá a -window vagy -windowed kapcsolót a Steam indítási beállításaihoz, vagy keresd meg a játékot a PCGamingWikin.\n\n• Könyvtár: ments el egy játékot, és a keret nélküli mód automatikusan alkalmazódik minden indításkor.\n\n• A Ctrl+Alt+B az aktív ablak keret nélküli módját kapcsolja.\n\n• „admin” címke: a játék rendszergazdaként fut, és a Windows blokkolja a Marcót. Vedd ki a „Futtatás rendszergazdaként” opciót a játék kompatibilitási beállításaiból, vagy futtasd a Marcót rendszergazdaként.\n\n• Néhány régi játéknak Windows 7 kompatibilitási mód kell (a játék .exe-je → Tulajdonságok → Kompatibilitás) — ezt „Futtatás rendszergazdaként” NÉLKÜL kapcsold be.\n\n• Az exkluzív teljes képernyő kívülről nem módosítható: a játéknak először ablakban kell futnia.\n\n• Ha a játék lefagy, amikor az intróvideó alatt Alt+Tabot nyomsz, az a játék hibája: intrók alatt ne válts ablakot.",
+            ["app.yaAbierto"] = "A Marco már fut: keresd a tálcán.",
         },
         ["ro"] = new()
         {
@@ -1039,6 +1093,9 @@ public static class Textos
             ["err.sinEstado"] = "Nu există stare salvată pentru acea fereastră.",
             ["err.restaurar"] = "SetWindowPos a eșuat la restaurare.",
             ["cli.sinVentanas"] = "Nicio fereastră vizibilă pentru procesul „{0}”.",
+            ["ayuda.titulo"] = "Ajutor",
+            ["ayuda.texto"] = "• Pune jocul în modul FEREASTRĂ — Marco elimină marginile și întinde fereastra pe tot ecranul.\n\n• Nu există opțiune de fereastră? Încearcă Alt+Enter în joc, adaugă -window sau -windowed la opțiunile de pornire din Steam, sau caută jocul pe PCGamingWiki.\n\n• Bibliotecă: salvează un joc și fără margini se va aplica automat la fiecare pornire.\n\n• Ctrl+Alt+B comută fără margini pe fereastra activă.\n\n• Eticheta „admin”: jocul rulează ca administrator și Windows blochează Marco. Scoate „Executare ca administrator” din opțiunile de compatibilitate ale jocului, sau rulează Marco ca administrator.\n\n• Unele jocuri vechi au nevoie de modul de compatibilitate Windows 7 (.exe-ul jocului → Proprietăți → Compatibilitate) — activează-l FĂRĂ „Executare ca administrator”.\n\n• Ecranul complet exclusiv nu poate fi modificat din exterior: jocul trebuie mai întâi să ruleze în fereastră.\n\n• Dacă un joc îngheață când apeși Alt+Tab în timpul videoclipului de intro, e vina jocului: nu schimba fereastra în timpul introurilor.",
+            ["app.yaAbierto"] = "Marco rulează deja: caută-l în bara de sistem.",
         },
         ["el"] = new()
         {
@@ -1091,6 +1148,9 @@ public static class Textos
             ["err.sinEstado"] = "Δεν υπάρχει αποθηκευμένη κατάσταση για αυτό το παράθυρο.",
             ["err.restaurar"] = "Το SetWindowPos απέτυχε στην επαναφορά.",
             ["cli.sinVentanas"] = "Δεν υπάρχουν ορατά παράθυρα για τη διεργασία «{0}».",
+            ["ayuda.titulo"] = "Βοήθεια",
+            ["ayuda.texto"] = "• Βάλτε το παιχνίδι σε λειτουργία ΠΑΡΑΘΥΡΟΥ — το Marco αφαιρεί τα περιγράμματα και απλώνει το παράθυρο σε όλη την οθόνη.\n\n• Δεν υπάρχει επιλογή παραθύρου; Δοκιμάστε Alt+Enter μέσα στο παιχνίδι, προσθέστε -window ή -windowed στις επιλογές εκκίνησης του Steam, ή αναζητήστε το παιχνίδι στο PCGamingWiki.\n\n• Βιβλιοθήκη: αποθηκεύστε ένα παιχνίδι και το χωρίς περίγραμμα θα εφαρμόζεται αυτόματα σε κάθε εκκίνηση.\n\n• Το Ctrl+Alt+B εναλλάσσει το χωρίς περίγραμμα στο ενεργό παράθυρο.\n\n• Ετικέτα «admin»: το παιχνίδι τρέχει ως διαχειριστής και τα Windows μπλοκάρουν το Marco. Αφαιρέστε το «Εκτέλεση ως διαχειριστής» από τις επιλογές συμβατότητας του παιχνιδιού, ή εκτελέστε το Marco ως διαχειριστής.\n\n• Ορισμένα παλιά παιχνίδια χρειάζονται λειτουργία συμβατότητας Windows 7 (.exe του παιχνιδιού → Ιδιότητες → Συμβατότητα) — ενεργοποιήστε την ΧΩΡΙΣ «Εκτέλεση ως διαχειριστής».\n\n• Η αποκλειστική πλήρης οθόνη δεν αλλάζει απ' έξω: το παιχνίδι πρέπει πρώτα να είναι σε παράθυρο.\n\n• Αν ένα παιχνίδι παγώνει όταν πατάτε Alt+Tab κατά το εισαγωγικό βίντεο, φταίει το παιχνίδι: μην αλλάζετε παράθυρα στα intro.",
+            ["app.yaAbierto"] = "Το Marco εκτελείται ήδη: αναζητήστε το στη γραμμή ειδοποιήσεων.",
         },
         ["bg"] = new()
         {
@@ -1143,6 +1203,9 @@ public static class Textos
             ["err.sinEstado"] = "Няма запазено състояние за този прозорец.",
             ["err.restaurar"] = "SetWindowPos не успя да възстанови.",
             ["cli.sinVentanas"] = "Няма видими прозорци за процеса „{0}“.",
+            ["ayuda.titulo"] = "Помощ",
+            ["ayuda.texto"] = "• Сложете играта в РЕЖИМ НА ПРОЗОРЕЦ — Marco премахва рамките и разтяга прозореца върху целия екран.\n\n• Няма опция за прозорец? Опитайте Alt+Enter в играта, добавете -window или -windowed към опциите за стартиране в Steam, или потърсете играта в PCGamingWiki.\n\n• Библиотека: запазете игра и рамките ще се премахват автоматично при всяко стартиране.\n\n• Ctrl+Alt+B превключва рамките на активния прозорец.\n\n• Етикет „админ“: играта работи като администратор и Windows блокира Marco. Премахнете „Изпълнявай като администратор“ от опциите за съвместимост на играта, или стартирайте Marco като администратор.\n\n• Някои стари игри изискват режим на съвместимост с Windows 7 (.exe на играта → Свойства → Съвместимост) — включете го БЕЗ „Изпълнявай като администратор“.\n\n• Ексклузивният цял екран не може да се промени отвън: играта първо трябва да е в прозорец.\n\n• Ако игра замръзва при Alt+Tab по време на интро видеото, това е проблем на играта: не сменяйте прозорци по време на интрото.",
+            ["app.yaAbierto"] = "Marco вече работи: потърсете го в системната област.",
         },
         ["uk"] = new()
         {
@@ -1195,6 +1258,9 @@ public static class Textos
             ["err.sinEstado"] = "Немає збереженого стану цього вікна.",
             ["err.restaurar"] = "SetWindowPos не зміг відновити вікно.",
             ["cli.sinVentanas"] = "Немає видимих вікон процесу «{0}».",
+            ["ayuda.titulo"] = "Довідка",
+            ["ayuda.texto"] = "• Переведіть гру в ВІКОННИЙ режим — Marco прибере рамки й розтягне вікно на весь екран.\n\n• Немає віконного режиму? Спробуйте Alt+Enter у грі, додайте -window або -windowed до параметрів запуску Steam, або знайдіть гру на PCGamingWiki.\n\n• Бібліотека: збережіть гру, і рамки прибиратимуться автоматично під час кожного запуску.\n\n• Ctrl+Alt+B перемикає рамки активного вікна.\n\n• Мітка «адмін»: гра запущена від адміністратора, і Windows блокує Marco. Приберіть «Запускати від імені адміністратора» у властивостях сумісності гри, або запустіть Marco від адміністратора.\n\n• Деяким старим іграм потрібен режим сумісності з Windows 7 (.exe гри → Властивості → Сумісність) — вмикайте його БЕЗ «Запускати від імені адміністратора».\n\n• Ексклюзивний повноекранний режим не можна змінити ззовні: гра спочатку має бути у вікні.\n\n• Якщо гра зависає при Alt+Tab під час вступного відео — це особливість гри: не перемикайте вікна під час заставок.",
+            ["app.yaAbierto"] = "Marco вже запущено: знайдіть його в системному треї.",
         },
         ["zh-CN"] = new()
         {
@@ -1247,6 +1313,9 @@ public static class Textos
             ["err.sinEstado"] = "该窗口没有已保存的状态。",
             ["err.restaurar"] = "SetWindowPos 恢复失败。",
             ["cli.sinVentanas"] = "进程“{0}”没有可见窗口。",
+            ["ayuda.titulo"] = "帮助",
+            ["ayuda.texto"] = "• 把游戏设为窗口模式 — Marco 会去除边框并将窗口拉伸至全屏。\n\n• 游戏没有窗口选项？试试游戏内按 Alt+Enter，或在 Steam 启动选项中添加 -window 或 -windowed，也可以在 PCGamingWiki 上查找该游戏。\n\n• 库：保存游戏后，每次启动都会自动去除边框。\n\n• Ctrl+Alt+B 切换活动窗口的无边框状态。\n\n• “管理员”标签：游戏以管理员身份运行，Windows 会阻止 Marco。请在游戏兼容性选项中取消“以管理员身份运行”，或以管理员身份运行 Marco。\n\n• 一些老游戏需要 Windows 7 兼容模式（游戏 .exe → 属性 → 兼容性）— 启用时请不要勾选“以管理员身份运行”。\n\n• 独占全屏无法从外部修改：游戏必须先处于窗口模式。\n\n• 如果游戏在片头视频期间按 Alt+Tab 会卡死，那是游戏本身的问题：片头期间请勿切换窗口。",
+            ["app.yaAbierto"] = "Marco 已在运行：请在系统托盘中查找。",
         },
         ["zh-TW"] = new()
         {
@@ -1299,6 +1368,9 @@ public static class Textos
             ["err.sinEstado"] = "該視窗沒有已儲存的狀態。",
             ["err.restaurar"] = "SetWindowPos 還原失敗。",
             ["cli.sinVentanas"] = "處理程序「{0}」沒有可見視窗。",
+            ["ayuda.titulo"] = "說明",
+            ["ayuda.texto"] = "• 將遊戲設為視窗模式 — Marco 會移除邊框並將視窗延展至整個螢幕。\n\n• 遊戲沒有視窗選項？試試在遊戲中按 Alt+Enter，或在 Steam 啟動選項加入 -window 或 -windowed，也可以在 PCGamingWiki 查詢該遊戲。\n\n• 媒體庫：儲存遊戲後，每次啟動都會自動移除邊框。\n\n• Ctrl+Alt+B 切換使用中視窗的無邊框狀態。\n\n• 「系統管理員」標籤：遊戲以系統管理員身分執行，Windows 會封鎖 Marco。請在遊戲相容性選項取消「以系統管理員身分執行」，或以系統管理員身分執行 Marco。\n\n• 一些老遊戲需要 Windows 7 相容模式（遊戲 .exe → 內容 → 相容性）— 啟用時請不要勾選「以系統管理員身分執行」。\n\n• 獨佔全螢幕無法從外部修改：遊戲必須先處於視窗模式。\n\n• 如果遊戲在片頭影片期間按 Alt+Tab 會當機，那是遊戲本身的問題：片頭期間請勿切換視窗。",
+            ["app.yaAbierto"] = "Marco 已在執行：請在系統匣中尋找。",
         },
         ["ja"] = new()
         {
@@ -1351,6 +1423,9 @@ public static class Textos
             ["err.sinEstado"] = "そのウィンドウの保存された状態はありません。",
             ["err.restaurar"] = "SetWindowPos による復元に失敗しました。",
             ["cli.sinVentanas"] = "プロセス「{0}」の表示中ウィンドウはありません。",
+            ["ayuda.titulo"] = "ヘルプ",
+            ["ayuda.texto"] = "• ゲームをウィンドウモードにしてください — Marco がボーダーを取り除き、画面全体に引き伸ばします。\n\n• ウィンドウモードがない場合は、ゲーム内で Alt+Enter を試すか、Steam の起動オプションに -window または -windowed を追加するか、PCGamingWiki でゲームを調べてください。\n\n• ライブラリ: ゲームを保存すると、起動のたびに自動でボーダーレスが適用されます。\n\n• Ctrl+Alt+B でアクティブウィンドウのボーダーレスを切り替えます。\n\n• 「管理者」タグ: ゲームが管理者として実行されており、Windows が Marco をブロックしています。ゲームの互換性オプションから「管理者としてこのプログラムを実行する」を外すか、Marco を管理者として実行してください。\n\n• 一部の古いゲームは Windows 7 互換モードが必要です（ゲームの .exe → プロパティ → 互換性）— 「管理者として実行」なしで有効にしてください。\n\n• 排他的フルスクリーンは外部から変更できません: まずゲームをウィンドウにする必要があります。\n\n• イントロ動画中に Alt+Tab するとフリーズするゲームがありますが、それはゲーム側の問題です: イントロ中はウィンドウを切り替えないでください。",
+            ["app.yaAbierto"] = "Marco は既に起動しています。トレイを確認してください。",
         },
         ["ko"] = new()
         {
@@ -1403,6 +1478,9 @@ public static class Textos
             ["err.sinEstado"] = "해당 창의 저장된 상태가 없습니다.",
             ["err.restaurar"] = "SetWindowPos가 복원에 실패했습니다.",
             ["cli.sinVentanas"] = "프로세스 “{0}”의 보이는 창이 없습니다.",
+            ["ayuda.titulo"] = "도움말",
+            ["ayuda.texto"] = "• 게임을 창 모드로 설정하세요 — Marco가 테두리를 제거하고 화면 전체로 늘립니다.\n\n• 창 모드 옵션이 없나요? 게임 내에서 Alt+Enter를 눌러 보거나, Steam 시작 옵션에 -window 또는 -windowed를 추가하거나, PCGamingWiki에서 게임을 검색하세요.\n\n• 라이브러리: 게임을 저장하면 시작할 때마다 자동으로 테두리가 제거됩니다.\n\n• Ctrl+Alt+B는 활성 창의 테두리 제거를 전환합니다.\n\n• “관리자” 태그: 게임이 관리자 권한으로 실행되어 Windows가 Marco를 차단합니다. 게임 호환성 옵션에서 “관리자 권한으로 실행”을 해제하거나 Marco를 관리자 권한으로 실행하세요.\n\n• 일부 오래된 게임은 Windows 7 호환 모드가 필요합니다(게임 .exe → 속성 → 호환성) — “관리자 권한으로 실행” 없이 활성화하세요.\n\n• 전용 전체 화면은 외부에서 변경할 수 없습니다: 게임이 먼저 창 모드여야 합니다.\n\n• 인트로 영상 중 Alt+Tab을 누르면 멈추는 게임이 있는데 이는 게임 자체 문제입니다: 인트로 중에는 창을 전환하지 마세요.",
+            ["app.yaAbierto"] = "Marco가 이미 실행 중입니다. 시스템 트레이를 확인하세요.",
         },
         ["ar"] = new()
         {
@@ -1455,6 +1533,9 @@ public static class Textos
             ["err.sinEstado"] = "لا توجد حالة محفوظة لهذه النافذة.",
             ["err.restaurar"] = "فشل SetWindowPos في الاستعادة.",
             ["cli.sinVentanas"] = "لا توجد نوافذ مرئية للعملية \"{0}\".",
+            ["ayuda.titulo"] = "مساعدة",
+            ["ayuda.texto"] = "• ضع اللعبة في وضع النافذة — يزيل Marco الحدود ويمدّ النافذة على كامل الشاشة.\n\n• لا يوجد خيار نافذة؟ جرّب Alt+Enter داخل اللعبة، أو أضف ‎-window أو ‎-windowed إلى خيارات التشغيل في Steam، أو ابحث عن اللعبة في PCGamingWiki.\n\n• المكتبة: احفظ لعبة وستُزال الحدود تلقائيًا عند كل تشغيل.\n\n• Ctrl+Alt+B يبدّل إزالة الحدود للنافذة النشطة.\n\n• وسم \"مسؤول\": اللعبة تعمل كمسؤول وWindows يمنع Marco. أزل \"تشغيل كمسؤول\" من خيارات توافق اللعبة، أو شغّل Marco كمسؤول.\n\n• بعض الألعاب القديمة تحتاج وضع توافق Windows 7 (ملف .exe للعبة ← خصائص ← التوافق) — فعِّله من دون \"تشغيل كمسؤول\".\n\n• لا يمكن تعديل ملء الشاشة الحصري من الخارج: يجب أن تكون اللعبة في نافذة أولًا.\n\n• إذا تجمّدت لعبة عند الضغط على Alt+Tab أثناء فيديو المقدمة فهذا من اللعبة نفسها: لا تبدّل النوافذ أثناء المقدمات.",
+            ["app.yaAbierto"] = "Marco يعمل بالفعل: ابحث عنه في علبة النظام.",
         },
         ["id"] = new()
         {
@@ -1507,6 +1588,9 @@ public static class Textos
             ["err.sinEstado"] = "Tidak ada keadaan tersimpan untuk jendela itu.",
             ["err.restaurar"] = "SetWindowPos gagal memulihkan.",
             ["cli.sinVentanas"] = "Tidak ada jendela terlihat untuk proses “{0}”.",
+            ["ayuda.titulo"] = "Bantuan",
+            ["ayuda.texto"] = "• Atur game ke mode JENDELA — Marco menghilangkan bingkai dan merentangkan jendela ke seluruh layar.\n\n• Tidak ada opsi jendela? Coba Alt+Enter di dalam game, tambahkan -window atau -windowed ke opsi peluncuran Steam, atau cari game tersebut di PCGamingWiki.\n\n• Pustaka: simpan game dan bingkai akan dihilangkan otomatis setiap kali game dimulai.\n\n• Ctrl+Alt+B mengalihkan tanpa bingkai pada jendela aktif.\n\n• Label “admin”: game berjalan sebagai administrator dan Windows memblokir Marco. Hapus “Jalankan sebagai administrator” dari opsi kompatibilitas game, atau jalankan Marco sebagai administrator.\n\n• Beberapa game lama butuh mode kompatibilitas Windows 7 (.exe game → Properti → Kompatibilitas) — aktifkan TANPA “Jalankan sebagai administrator”.\n\n• Layar penuh eksklusif tidak bisa diubah dari luar: game harus dalam mode jendela dulu.\n\n• Jika game membeku saat Alt+Tab selama video intro, itu masalah game-nya: jangan berpindah jendela selama intro.",
+            ["app.yaAbierto"] = "Marco sudah berjalan: cari di baki sistem.",
         },
         ["th"] = new()
         {
@@ -1559,6 +1643,9 @@ public static class Textos
             ["err.sinEstado"] = "ไม่มีสถานะที่บันทึกไว้ของหน้าต่างนั้น",
             ["err.restaurar"] = "SetWindowPos คืนค่าไม่สำเร็จ",
             ["cli.sinVentanas"] = "ไม่มีหน้าต่างที่มองเห็นได้ของโปรเซส “{0}”",
+            ["ayuda.titulo"] = "ช่วยเหลือ",
+            ["ayuda.texto"] = "• ตั้งเกมเป็นโหมดหน้าต่าง — Marco จะลบขอบและขยายหน้าต่างให้เต็มจอ\n\n• เกมไม่มีโหมดหน้าต่าง? ลองกด Alt+Enter ในเกม เพิ่ม -window หรือ -windowed ในตัวเลือกการเปิดของ Steam หรือค้นหาเกมใน PCGamingWiki\n\n• คลัง: บันทึกเกมแล้วขอบจะถูกลบอัตโนมัติทุกครั้งที่เกมเริ่ม\n\n• Ctrl+Alt+B สลับการลบขอบของหน้าต่างที่ใช้งานอยู่\n\n• ป้าย “แอดมิน”: เกมทำงานในสิทธิ์ผู้ดูแลระบบ ทำให้ Windows บล็อก Marco ให้เอา “เรียกใช้ในฐานะผู้ดูแล” ออกจากตัวเลือกความเข้ากันได้ของเกม หรือเรียกใช้ Marco ในสิทธิ์ผู้ดูแลระบบ\n\n• เกมเก่าบางเกมต้องใช้โหมดความเข้ากันได้กับ Windows 7 (.exe ของเกม → คุณสมบัติ → ความเข้ากันได้) — เปิดใช้โดยไม่ติ๊ก “เรียกใช้ในฐานะผู้ดูแล”\n\n• โหมดเต็มจอแบบเอกสิทธิ์แก้จากภายนอกไม่ได้: เกมต้องอยู่ในโหมดหน้าต่างก่อน\n\n• ถ้าเกมค้างเมื่อกด Alt+Tab ระหว่างวิดีโอเปิดเกม นั่นเป็นปัญหาของตัวเกม: อย่าสลับหน้าต่างระหว่างอินโทร",
+            ["app.yaAbierto"] = "Marco กำลังทำงานอยู่แล้ว: ดูที่ถาดระบบ",
         },
         ["vi"] = new()
         {
@@ -1611,6 +1698,9 @@ public static class Textos
             ["err.sinEstado"] = "Không có trạng thái đã lưu của cửa sổ đó.",
             ["err.restaurar"] = "SetWindowPos thất bại khi khôi phục.",
             ["cli.sinVentanas"] = "Không có cửa sổ hiển thị nào của tiến trình “{0}”.",
+            ["ayuda.titulo"] = "Trợ giúp",
+            ["ayuda.texto"] = "• Đặt trò chơi ở chế độ CỬA SỔ — Marco sẽ bỏ viền và kéo giãn cửa sổ ra toàn màn hình.\n\n• Không có tùy chọn cửa sổ? Thử Alt+Enter trong game, thêm -window hoặc -windowed vào tùy chọn khởi chạy của Steam, hoặc tra cứu game trên PCGamingWiki.\n\n• Thư viện: lưu một game và viền sẽ tự động được bỏ mỗi lần game khởi động.\n\n• Ctrl+Alt+B bật/tắt bỏ viền cho cửa sổ đang hoạt động.\n\n• Nhãn “quản trị”: game chạy với quyền quản trị và Windows chặn Marco. Bỏ “Chạy với tư cách quản trị viên” trong tùy chọn tương thích của game, hoặc chạy Marco với quyền quản trị.\n\n• Một số game cũ cần chế độ tương thích Windows 7 (.exe của game → Thuộc tính → Tương thích) — bật nó mà KHÔNG chọn “Chạy với tư cách quản trị viên”.\n\n• Toàn màn hình độc quyền không thể thay đổi từ bên ngoài: game phải ở chế độ cửa sổ trước.\n\n• Nếu game bị treo khi Alt+Tab trong video mở đầu, đó là lỗi của game: đừng chuyển cửa sổ trong lúc intro.",
+            ["app.yaAbierto"] = "Marco đang chạy rồi: tìm nó ở khay hệ thống.",
         },
     };
 }

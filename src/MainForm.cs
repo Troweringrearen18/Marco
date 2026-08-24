@@ -83,10 +83,12 @@ public sealed class MainForm : Form
         _maximizar = BotonTitulo("\uE922", AlternarMaximizado); // maximizar/restaurar (Segoe MDL2)
         var cerrar = BotonTitulo("\uE8BB", Close);
         var minimizar = BotonTitulo("\uE921", OcultarABandeja); // minimizar = irse a la bandeja
+        var ayuda = BotonTitulo("\uE897", AbrirAyuda);          // ? \u2014 ayuda general
         _barraTitulo.Controls.Add(_titulo);
         _barraTitulo.Controls.Add(cerrar);
         _barraTitulo.Controls.Add(_maximizar);
         _barraTitulo.Controls.Add(minimizar);
+        _barraTitulo.Controls.Add(ayuda);
         // Los avisos viven en la barra de título (sin barra inferior) y se borran solos
         _estado = new Label
         {
@@ -109,8 +111,9 @@ public sealed class MainForm : Form
             cerrar.Location = new Point(_barraTitulo.Width - cerrar.Width - 6, 5);
             _maximizar.Location = new Point(cerrar.Left - _maximizar.Width - 2, 5);
             minimizar.Location = new Point(_maximizar.Left - minimizar.Width - 2, 5);
+            ayuda.Location = new Point(minimizar.Left - ayuda.Width - 2, 5);
             _estado.SetBounds(_titulo.Right + 12, 0,
-                Math.Max(0, minimizar.Left - _titulo.Right - 24), _barraTitulo.Height);
+                Math.Max(0, ayuda.Left - _titulo.Right - 24), _barraTitulo.Height);
         };
         _barraTitulo.MouseDown += ArrastrarVentana;
         _titulo.MouseDown += ArrastrarVentana;
@@ -712,6 +715,69 @@ public sealed class MainForm : Form
         camino.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
         camino.CloseFigure();
         return camino;
+    }
+
+    // Diálogo de ayuda temático: chrome propio, texto corto e informativo, Esc cierra
+    private void AbrirAyuda()
+    {
+        using var dialogo = new Form
+        {
+            Text = Textos.T("ayuda.titulo"),
+            FormBorderStyle = FormBorderStyle.None,
+            StartPosition = FormStartPosition.CenterParent,
+            ShowInTaskbar = false,
+            ClientSize = new Size(620, 560),
+            BackColor = _fondo,
+            KeyPreview = true,
+        };
+        dialogo.HandleCreated += (_, _) =>
+        {
+            int redondeo = NativeMethods.DWMWCP_ROUND;
+            _ = NativeMethods.DwmSetWindowAttribute(dialogo.Handle,
+                NativeMethods.DWMWA_WINDOW_CORNER_PREFERENCE, ref redondeo, sizeof(int));
+        };
+        dialogo.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) dialogo.Close(); };
+
+        void Arrastrar(object? s, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Left) return;
+            NativeMethods.ReleaseCapture();
+            NativeMethods.SendMessage(dialogo.Handle, NativeMethods.WM_NCLBUTTONDOWN,
+                new IntPtr(NativeMethods.HTCAPTION), IntPtr.Zero);
+        }
+        dialogo.MouseDown += Arrastrar;
+
+        var tituloAyuda = new Label
+        {
+            Text = Textos.T("ayuda.titulo"),
+            AutoSize = true,
+            Location = new Point(18, 14),
+            Font = new Font("Segoe UI Semibold", 10.5f),
+            ForeColor = _texto,
+            BackColor = Color.Transparent,
+        };
+        tituloAyuda.MouseDown += Arrastrar;
+
+        var cerrarAyuda = BotonTitulo("\uE8BB", () => dialogo.Close());
+        cerrarAyuda.BackColor = _fondo;
+        cerrarAyuda.ForeColor = _textoSuave;
+        cerrarAyuda.FlatAppearance.MouseOverBackColor = _panel;
+        cerrarAyuda.Location = new Point(dialogo.ClientSize.Width - cerrarAyuda.Width - 8, 8);
+
+        var cuerpo = new Label
+        {
+            Text = Textos.T("ayuda.texto"),
+            Location = new Point(18, 52),
+            Size = new Size(dialogo.ClientSize.Width - 36, dialogo.ClientSize.Height - 70),
+            ForeColor = _texto,
+            BackColor = Color.Transparent,
+        };
+        cuerpo.MouseDown += Arrastrar;
+
+        dialogo.Controls.Add(tituloAyuda);
+        dialogo.Controls.Add(cerrarAyuda);
+        dialogo.Controls.Add(cuerpo);
+        dialogo.ShowDialog(this);
     }
 
     private void AlternarAjustes()
