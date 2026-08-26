@@ -251,12 +251,56 @@ public sealed class MainForm : Form
         _ = NativeMethods.DwmSetWindowAttribute(Handle,
             NativeMethods.DWMWA_WINDOW_CORNER_PREFERENCE, ref redondeo, sizeof(int));
 
-        // Hotkey global Ctrl+Alt+B: borderless/deshacer sobre la ventana activa
-        NativeMethods.RegisterHotKey(Handle, 1,
-            NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, 0x42 /* B */);
-        // Ctrl+Alt+L: bloquear/liberar el ratón sobre la ventana activa
-        NativeMethods.RegisterHotKey(Handle, 2,
-            NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, 0x4C /* L */);
+        // Hotkeys globales configurables: id 1 borderless, id 2 bloqueo de ratón
+        RegistrarHotkeys();
+    }
+
+    private void RegistrarHotkeys()
+    {
+        NativeMethods.UnregisterHotKey(Handle, 1);
+        NativeMethods.UnregisterHotKey(Handle, 2);
+        RegistrarHotkey(1, _config.Hotkey, "Ctrl+Alt+B");
+        RegistrarHotkey(2, _config.HotkeyRaton, "Ctrl+Alt+L");
+    }
+
+    // Si el combo del usuario no parsea o ya lo tiene otra app, se cae al de por defecto
+    private void RegistrarHotkey(int id, string combo, string defecto)
+    {
+        if (ParseHotkey(combo, out uint mods, out uint vk) &&
+            NativeMethods.RegisterHotKey(Handle, id, mods, vk))
+            return;
+        if (ParseHotkey(defecto, out mods, out vk))
+            NativeMethods.RegisterHotKey(Handle, id, mods, vk);
+    }
+
+    // "Ctrl+Alt+B" → (MOD_CONTROL|MOD_ALT, 0x42). Los nombres de tecla son los del
+    // enum Keys (más "0".."9" como alias de D0..D9); "Strg" convive por el alemán
+    private static bool ParseHotkey(string combo, out uint mods, out uint vk)
+    {
+        mods = 0;
+        vk = 0;
+        foreach (string trozo in combo.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            switch (trozo.ToLowerInvariant())
+            {
+                case "ctrl" or "control" or "strg": mods |= NativeMethods.MOD_CONTROL; continue;
+                case "alt": mods |= NativeMethods.MOD_ALT; continue;
+                case "shift": mods |= NativeMethods.MOD_SHIFT; continue;
+            }
+            string nombre = trozo.Length == 1 && char.IsAsciiDigit(trozo[0]) ? "D" + trozo : trozo;
+            if (!Enum.TryParse(nombre, ignoreCase: true, out Keys tecla)) return false;
+            vk = (uint)tecla;
+        }
+        return vk != 0;
+    }
+
+    private static string ComboATexto(Keys modificadores, Keys tecla)
+    {
+        string nombre = tecla is >= Keys.D0 and <= Keys.D9 ? ((char)('0' + tecla - Keys.D0)).ToString() : tecla.ToString();
+        return (modificadores.HasFlag(Keys.Control) ? "Ctrl+" : "")
+             + (modificadores.HasFlag(Keys.Alt) ? "Alt+" : "")
+             + (modificadores.HasFlag(Keys.Shift) ? "Shift+" : "")
+             + nombre;
     }
 
     private void ArrastrarVentana(object? sender, MouseEventArgs e)
@@ -1190,10 +1234,10 @@ public sealed class MainForm : Form
         botonesLista.Controls.Add(mostrarOcultas);
         _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.lista"), botonesLista));
 
-        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.hotkey"),
-            new Label { AutoSize = true, Text = "" }, suave: true));
-        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.hotkeyRaton"),
-            new Label { AutoSize = true, Text = "" }, suave: true));
+        _panelAjustes.Controls.Add(FilaHotkey(Textos.T("hotkey.accion"),
+            () => _config.Hotkey, v => _config.Hotkey = v, 1));
+        _panelAjustes.Controls.Add(FilaHotkey(Textos.T("hotkey.raton"),
+            () => _config.HotkeyRaton, v => _config.HotkeyRaton = v, 2));
 
         _panelAjustes.ResumeLayout();
     }
@@ -1227,6 +1271,65 @@ public sealed class MainForm : Form
         control.Resize += (_, _) => Colocar();
         Colocar();
         return fila;
+    }
+
+    // Fila de hotkey configurable: el botón muestra el combo actual; al clicar entra en
+    // modo captura y la siguiente pulsación se convierte en el nuevo hotkey. El registro
+    // se prueba en vivo: si otra app ya tiene ese combo, se repone el anterior y se avisa.
+    private Panel FilaHotkey(string etiqueta, Func<string> leer, Action<string> escribir, int id)
+    {
+        var boton = BotonChico(leer());
+        bool capturando = false;
+        void Terminar()
+        {
+            capturando = false;
+            boton.Text = leer();
+        }
+        boton.Click += (_, _) =>
+        {
+            capturando = true;
+            boton.Text = Textos.T("hotkey.captura");
+        };
+        boton.LostFocus += (_, _) => { if (capturando) Terminar(); };
+        boton.PreviewKeyDown += (_, e) => { if (capturando) e.IsInputKey = true; };
+        boton.KeyDown += (_, e) =>
+        {
+            if (!capturando) return;
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+            // Un modificador suelto no es un combo todavía: seguir esperando
+            if (e.KeyCode is Keys.ControlKey or Keys.ShiftKey or Keys.Menu or Keys.LWin or Keys.RWin) return;
+            if (e.KeyCode == Keys.Escape)
+            {
+                Terminar();
+                return;
+            }
+            // Sin modificador solo se admiten teclas "seguras" (F1-F24, BloqDespl, Pausa):
+            // registrar una letra pelada secuestraría la escritura de todo el sistema
+            bool sola = e.KeyCode is (>= Keys.F1 and <= Keys.F24) or Keys.Scroll or Keys.Pause;
+            if (e.Modifiers == Keys.None && !sola)
+            {
+                _estado.Text = Textos.T("estado.hotkeyModificador");
+                return;
+            }
+            string combo = ComboATexto(e.Modifiers, e.KeyCode);
+            NativeMethods.UnregisterHotKey(Handle, id);
+            if (ParseHotkey(combo, out uint mods, out uint vk) &&
+                NativeMethods.RegisterHotKey(Handle, id, mods, vk))
+            {
+                escribir(combo);
+                ConfigStore.Guardar(_config);
+                _estado.Text = Textos.F("estado.hotkeyGuardado", combo);
+            }
+            else
+            {
+                _estado.Text = Textos.F("estado.hotkeyError", combo);
+                if (ParseHotkey(leer(), out uint m0, out uint v0))
+                    NativeMethods.RegisterHotKey(Handle, id, m0, v0); // reponer el anterior
+            }
+            Terminar();
+        };
+        return FilaAjuste(etiqueta, boton);
     }
 
     private void MostrarIdiomas(Control ancla)

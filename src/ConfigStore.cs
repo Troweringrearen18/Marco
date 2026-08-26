@@ -105,6 +105,10 @@ public sealed class Config
     public int VentanaAlto { get; set; }
     public List<Favorito> Favoritos { get; set; } = new();
     public List<string> Ocultas { get; set; } = new();   // procesos escondidos de la lista
+    // Hotkeys globales como texto legible ("Ctrl+Alt+B"); si el parse o el registro
+    // fallan se cae al valor por defecto sin romper nada
+    public string Hotkey { get; set; } = "Ctrl+Alt+B";
+    public string HotkeyRaton { get; set; } = "Ctrl+Alt+L";
     public bool ArrancarMinimizado { get; set; }
     public string Idioma { get; set; } = "en";
     public bool IniciarConWindows { get; set; }
