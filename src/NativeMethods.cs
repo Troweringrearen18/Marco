@@ -99,6 +99,8 @@ internal static class NativeMethods
     public const uint MOD_ALT = 0x1;
     public const uint MOD_CONTROL = 0x2;
     public const uint MOD_SHIFT = 0x4;
+    // Sin esto, mantener pulsado el combo repite WM_HOTKEY y alternaría aplicar/deshacer
+    public const uint MOD_NOREPEAT = 0x4000;
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);

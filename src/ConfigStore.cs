@@ -51,25 +51,33 @@ public sealed class FavoritoConverter : JsonConverter<Favorito>
             if (reader.TokenType != JsonTokenType.PropertyName) continue;
             string propiedad = reader.GetString() ?? "";
             reader.Read();
+            // Cada valor se lee solo si el token tiene el tipo esperado: un valor malformado
+            // (null, texto donde va número…) se ignora en vez de tirar la deserialización
+            // entera — un GetInt32 que lanza aquí haría a Cargar() descartar TODO config.json
+            bool numero = reader.TokenType == JsonTokenType.Number;
+            bool texto = reader.TokenType == JsonTokenType.String;
+            bool logico = reader.TokenType is JsonTokenType.True or JsonTokenType.False;
+            if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray)
+            {
+                reader.Skip(); // valor con forma inesperada: saltar el subárbol completo
+                continue;
+            }
             switch (propiedad)
             {
-                case nameof(Favorito.Proceso): favorito.Proceso = reader.GetString() ?? ""; break;
+                case nameof(Favorito.Proceso): if (texto) favorito.Proceso = reader.GetString() ?? ""; break;
                 case nameof(Favorito.Modo):
-                    if (Enum.TryParse(reader.GetString(), out ModoTamano modo)) favorito.Modo = modo;
+                    if (texto && Enum.TryParse(reader.GetString(), out ModoTamano modo)) favorito.Modo = modo;
                     break;
-                case nameof(Favorito.Ancho): favorito.Ancho = reader.GetInt32(); break;
-                case nameof(Favorito.Alto): favorito.Alto = reader.GetInt32(); break;
-                case nameof(Favorito.PosX):
-                    favorito.PosX = reader.TokenType == JsonTokenType.Null ? null : reader.GetInt32();
+                case nameof(Favorito.Ancho): if (numero && reader.TryGetInt32(out int an)) favorito.Ancho = an; break;
+                case nameof(Favorito.Alto): if (numero && reader.TryGetInt32(out int al)) favorito.Alto = al; break;
+                case nameof(Favorito.PosX): favorito.PosX = numero && reader.TryGetInt32(out int px) ? px : null; break;
+                case nameof(Favorito.PosY): favorito.PosY = numero && reader.TryGetInt32(out int py) ? py : null; break;
+                case nameof(Favorito.MonitorDispositivo):
+                    if (texto) favorito.MonitorDispositivo = reader.GetString() ?? "";
                     break;
-                case nameof(Favorito.PosY):
-                    favorito.PosY = reader.TokenType == JsonTokenType.Null ? null : reader.GetInt32();
-                    break;
-                case nameof(Favorito.MonitorDispositivo): favorito.MonitorDispositivo = reader.GetString() ?? ""; break;
-                case nameof(Favorito.SiempreEncima): favorito.SiempreEncima = reader.GetBoolean(); break;
-                case nameof(Favorito.RetardoSegundos): favorito.RetardoSegundos = reader.GetInt32(); break;
-                case nameof(Favorito.SilenciarFondo): favorito.SilenciarFondo = reader.GetBoolean(); break;
-                default: reader.Skip(); break;
+                case nameof(Favorito.SiempreEncima): if (logico) favorito.SiempreEncima = reader.GetBoolean(); break;
+                case nameof(Favorito.RetardoSegundos): if (numero && reader.TryGetInt32(out int rt)) favorito.RetardoSegundos = rt; break;
+                case nameof(Favorito.SilenciarFondo): if (logico) favorito.SilenciarFondo = reader.GetBoolean(); break;
             }
         }
         return favorito;

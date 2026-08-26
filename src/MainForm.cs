@@ -29,6 +29,9 @@ public sealed class MainForm : Form
     private readonly Dictionary<long, DateTime> _vistasWatcher = new();
     // Pids que Marco silenció: solo se desmutea lo que se muteó aquí
     private readonly HashSet<int> _pidsSilenciados = new();
+    // Mutes fallidos (proceso sin sesión de audio todavía): reintentar con calma, no cada
+    // tick — cada intento paga una activación COM completa de WASAPI en el hilo de UI
+    private readonly Dictionary<int, DateTime> _silenciosFallidos = new();
     private IntPtr _ratonBloqueado;
     private bool _watcherPausado;
     private readonly Config _config;
@@ -267,10 +270,10 @@ public sealed class MainForm : Form
     private void RegistrarHotkey(int id, string combo, string defecto)
     {
         if (ParseHotkey(combo, out uint mods, out uint vk) &&
-            NativeMethods.RegisterHotKey(Handle, id, mods, vk))
+            NativeMethods.RegisterHotKey(Handle, id, mods | NativeMethods.MOD_NOREPEAT, vk))
             return;
         if (ParseHotkey(defecto, out mods, out vk))
-            NativeMethods.RegisterHotKey(Handle, id, mods, vk);
+            NativeMethods.RegisterHotKey(Handle, id, mods | NativeMethods.MOD_NOREPEAT, vk);
     }
 
     // "Ctrl+Alt+B" → (MOD_CONTROL|MOD_ALT, 0x42). Los nombres de tecla son los del
@@ -419,11 +422,15 @@ public sealed class MainForm : Form
                     else _watcherFallidas.Add(clave); // no insistir cada 2 s contra un fallo persistente
                 }
             }
-            _watcherFallidas.RemoveWhere(h => !NativeMethods.IsWindow(new IntPtr(h)));
-            _deshechasManualmente.RemoveWhere(h => !NativeMethods.IsWindow(new IntPtr(h)));
-            foreach (long clave in _vistasWatcher.Keys.Where(h => !NativeMethods.IsWindow(new IntPtr(h))).ToList())
-                _vistasWatcher.Remove(clave);
         }
+
+        // Purga SIEMPRE, también en pausa o sin favoritos: Windows recicla los hwnd, y una
+        // entrada muerta que sobreviva a la pausa haría al watcher saltarse (o adelantar)
+        // una ventana nueva que herede ese mismo valor de handle
+        _watcherFallidas.RemoveWhere(h => !NativeMethods.IsWindow(new IntPtr(h)));
+        _deshechasManualmente.RemoveWhere(h => !NativeMethods.IsWindow(new IntPtr(h)));
+        foreach (long clave in _vistasWatcher.Keys.Where(h => !NativeMethods.IsWindow(new IntPtr(h))).ToList())
+            _vistasWatcher.Remove(clave);
 
         MantenerBloqueoRaton();
         MantenerSilencios(ventanas);
@@ -449,9 +456,9 @@ public sealed class MainForm : Form
             _estado.Text = Textos.T("estado.selecciona");
             return;
         }
-        if (EsFavorito(v.ProcessName))
+        if (BuscarFavorito(v.ProcessName) is { } favorito)
         {
-            _config.Favoritos.RemoveAll(f => f.Proceso.Equals(v.ProcessName, StringComparison.OrdinalIgnoreCase));
+            _config.Favoritos.Remove(favorito);
             _estado.Text = Textos.F("estado.fueraBiblio", v.ProcessName);
         }
         else
@@ -508,9 +515,13 @@ public sealed class MainForm : Form
         {
             IntPtr hwnd = NativeMethods.GetForegroundWindow();
             if (hwnd == IntPtr.Zero || hwnd == Handle) return;
+            // No encerrar el ratón en las ventanas del propio Marco (diálogos de
+            // Ayuda/Opciones incluidos: son top-level distintos de Handle)
+            NativeMethods.GetWindowThreadProcessId(hwnd, out uint pidRaton);
+            if (pidRaton == Environment.ProcessId) return;
             _ratonBloqueado = hwnd;
             ClipRaton(hwnd);
-            _bandeja.BalloonTipText = Textos.T("globo.ratonOn");
+            _bandeja.BalloonTipText = Textos.F("globo.ratonOn", _config.HotkeyRaton);
         }
         _bandeja.ShowBalloonTip(1200);
     }
@@ -521,9 +532,11 @@ public sealed class MainForm : Form
     {
         if (_watcherPausado || _config.Favoritos.Count == 0)
         {
+            _silenciosFallidos.Clear();
             if (_pidsSilenciados.Count == 0) return;
-            foreach (int pid in _pidsSilenciados) AudioService.Silenciar(pid, false);
-            _pidsSilenciados.Clear();
+            foreach (int pid in _pidsSilenciados.ToList())
+                if (AudioService.Silenciar(pid, false) || !ProcesoVivo(pid))
+                    _pidsSilenciados.Remove(pid);
             return;
         }
 
@@ -534,12 +547,44 @@ public sealed class MainForm : Form
                 conSilencio.Add(v.Pid);
 
         foreach (int pid in conSilencio)
-            if (pid != pidActivo && !_pidsSilenciados.Contains(pid) && AudioService.Silenciar(pid, true))
+        {
+            if (pid == pidActivo || _pidsSilenciados.Contains(pid)) continue;
+            // Fallo previo (proceso aún sin sesión de audio): reintentar cada 30 s, no cada
+            // tick — cada intento es una enumeración WASAPI completa en el hilo de UI
+            if (_silenciosFallidos.TryGetValue(pid, out var ultimo) &&
+                (DateTime.UtcNow - ultimo).TotalSeconds < 30) continue;
+            if (AudioService.Silenciar(pid, true))
+            {
                 _pidsSilenciados.Add(pid);
+                _silenciosFallidos.Remove(pid);
+            }
+            else
+            {
+                _silenciosFallidos[pid] = DateTime.UtcNow;
+            }
+        }
+        foreach (int pid in _silenciosFallidos.Keys.Where(p => !conSilencio.Contains(p)).ToList())
+            _silenciosFallidos.Remove(pid);
         foreach (int pid in _pidsSilenciados.Where(p => p == pidActivo || !conSilencio.Contains(p)).ToList())
         {
-            AudioService.Silenciar(pid, false);
-            _pidsSilenciados.Remove(pid);
+            // Solo olvidar el pid si el desmuteo funcionó o el proceso ya no existe: si no,
+            // un fallo transitorio (cambio del dispositivo por defecto) dejaría el juego
+            // mudo para siempre y sin registro de que fue Marco quien lo silenció
+            if (AudioService.Silenciar(pid, false) || !ProcesoVivo(pid))
+                _pidsSilenciados.Remove(pid);
+        }
+    }
+
+    private static bool ProcesoVivo(int pid)
+    {
+        try
+        {
+            using var proceso = System.Diagnostics.Process.GetProcessById(pid);
+            return !proceso.HasExited;
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -550,11 +595,15 @@ public sealed class MainForm : Form
         if (hwnd == IntPtr.Zero || hwnd == Handle) return;
         NativeMethods.GetWindowThreadProcessId(hwnd, out uint pid);
         if (pid == Environment.ProcessId) return;
+        // Un favorito conserva sus opciones también por hotkey
+        Favorito? favorito = null;
+        try { favorito = BuscarFavorito(System.Diagnostics.Process.GetProcessById((int)pid).ProcessName); }
+        catch { /* el proceso murió entre medias */ }
         bool aplicada = BorderlessService.TieneEstadoGuardado(hwnd);
         string error;
         bool exito = aplicada
             ? BorderlessService.Restaurar(hwnd, out error)
-            : BorderlessService.Aplicar(hwnd, out error);
+            : BorderlessService.Aplicar(hwnd, favorito, out error);
         if (exito)
         {
             if (aplicada) _deshechasManualmente.Add(hwnd.ToInt64());
@@ -860,16 +909,18 @@ public sealed class MainForm : Form
         return camino;
     }
 
-    // Diálogo de ayuda temático: chrome propio, texto corto e informativo, Esc cierra
-    private void AbrirAyuda()
+    // Chrome compartido de los diálogos temáticos (Ayuda, Opciones): forma sin borde con
+    // esquinas DWM, Esc cierra, arrastre por el fondo, título y botón de cierre. Devuelve
+    // también el manejador de arrastre para engancharlo a los controles grandes del cuerpo.
+    private (Form Dialogo, MouseEventHandler Arrastrar) CrearDialogo(string titulo, Size tamano)
     {
-        using var dialogo = new Form
+        var dialogo = new Form
         {
-            Text = Textos.T("ayuda.titulo"),
+            Text = titulo,
             FormBorderStyle = FormBorderStyle.None,
             StartPosition = FormStartPosition.CenterParent,
             ShowInTaskbar = false,
-            ClientSize = new Size(620, 560),
+            ClientSize = tamano,
             BackColor = _fondo,
             KeyPreview = true,
         };
@@ -890,35 +941,46 @@ public sealed class MainForm : Form
         }
         dialogo.MouseDown += Arrastrar;
 
-        var tituloAyuda = new Label
+        var etTitulo = new Label
         {
-            Text = Textos.T("ayuda.titulo"),
+            Text = titulo,
             AutoSize = true,
             Location = new Point(18, 14),
             Font = new Font("Segoe UI Semibold", 10.5f),
             ForeColor = _texto,
             BackColor = Color.Transparent,
         };
-        tituloAyuda.MouseDown += Arrastrar;
+        etTitulo.MouseDown += Arrastrar;
 
-        var cerrarAyuda = BotonTitulo("\uE8BB", () => dialogo.Close());
-        cerrarAyuda.BackColor = _fondo;
-        cerrarAyuda.ForeColor = _textoSuave;
-        cerrarAyuda.FlatAppearance.MouseOverBackColor = _panel;
-        cerrarAyuda.Location = new Point(dialogo.ClientSize.Width - cerrarAyuda.Width - 8, 8);
+        var cerrar = BotonTitulo("\uE8BB", () => dialogo.Close());
+        cerrar.BackColor = _fondo;
+        cerrar.ForeColor = _textoSuave;
+        cerrar.FlatAppearance.MouseOverBackColor = _panel;
+        cerrar.Location = new Point(dialogo.ClientSize.Width - cerrar.Width - 8, 8);
+
+        dialogo.Controls.Add(etTitulo);
+        dialogo.Controls.Add(cerrar);
+        return (dialogo, Arrastrar);
+    }
+
+    // Diálogo de ayuda temático: chrome propio, texto corto e informativo, Esc cierra
+    private void AbrirAyuda()
+    {
+        var (dialogo, arrastrar) = CrearDialogo(Textos.T("ayuda.titulo"), new Size(620, 560));
+        using var cierraDialogo = dialogo;
 
         var cuerpo = new Label
         {
-            Text = Textos.T("ayuda.texto") + "\n\n" + Textos.T("ayuda.raton"),
+            // Los textos interpolan el combo vigente: tras remapear el hotkey, unas
+            // instrucciones con el combo antiguo enseñarían teclas muertas
+            Text = Textos.F("ayuda.texto", _config.Hotkey) + "\n\n" + Textos.F("ayuda.raton", _config.HotkeyRaton),
             Location = new Point(18, 52),
             Size = new Size(dialogo.ClientSize.Width - 36, dialogo.ClientSize.Height - 70),
             ForeColor = _texto,
             BackColor = Color.Transparent,
         };
-        cuerpo.MouseDown += Arrastrar;
+        cuerpo.MouseDown += arrastrar;
 
-        dialogo.Controls.Add(tituloAyuda);
-        dialogo.Controls.Add(cerrarAyuda);
         dialogo.Controls.Add(cuerpo);
         dialogo.ShowDialog(this);
     }
@@ -929,47 +991,8 @@ public sealed class MainForm : Form
     {
         if (_lista.Seleccion is not { } v || BuscarFavorito(v.ProcessName) is not { } favorito) return;
 
-        using var dialogo = new Form
-        {
-            Text = Textos.F("opciones.titulo", favorito.Proceso),
-            FormBorderStyle = FormBorderStyle.None,
-            StartPosition = FormStartPosition.CenterParent,
-            ShowInTaskbar = false,
-            ClientSize = new Size(470, 452),
-            BackColor = _fondo,
-            KeyPreview = true,
-        };
-        dialogo.HandleCreated += (_, _) =>
-        {
-            int redondeo = NativeMethods.DWMWCP_ROUND;
-            _ = NativeMethods.DwmSetWindowAttribute(dialogo.Handle,
-                NativeMethods.DWMWA_WINDOW_CORNER_PREFERENCE, ref redondeo, sizeof(int));
-        };
-        dialogo.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) dialogo.Close(); };
-        void Arrastrar(object? s, MouseEventArgs e)
-        {
-            if (e.Button != MouseButtons.Left) return;
-            NativeMethods.ReleaseCapture();
-            NativeMethods.SendMessage(dialogo.Handle, NativeMethods.WM_NCLBUTTONDOWN,
-                new IntPtr(NativeMethods.HTCAPTION), IntPtr.Zero);
-        }
-        dialogo.MouseDown += Arrastrar;
-
-        var tituloOpciones = new Label
-        {
-            Text = Textos.F("opciones.titulo", favorito.Proceso),
-            AutoSize = true,
-            Location = new Point(18, 14),
-            Font = new Font("Segoe UI Semibold", 10.5f),
-            ForeColor = _texto,
-            BackColor = Color.Transparent,
-        };
-        tituloOpciones.MouseDown += Arrastrar;
-        var cerrarOpciones = BotonTitulo("\uE8BB", () => dialogo.Close());
-        cerrarOpciones.BackColor = _fondo;
-        cerrarOpciones.ForeColor = _textoSuave;
-        cerrarOpciones.FlatAppearance.MouseOverBackColor = _panel;
-        cerrarOpciones.Location = new Point(dialogo.ClientSize.Width - cerrarOpciones.Width - 8, 8);
+        var (dialogo, arrastrar) = CrearDialogo(Textos.F("opciones.titulo", favorito.Proceso), new Size(470, 452));
+        using var cierraDialogo = dialogo;
 
         RadioButton Radio(string clave, int y, bool marcado) => new()
         {
@@ -1028,6 +1051,12 @@ public sealed class MainForm : Form
         for (int i = 0; i < pantallas.Length; i++)
             monitores.Add((pantallas[i].DeviceName,
                 Textos.F("opciones.monitorN", i + 1, pantallas[i].Bounds.Width, pantallas[i].Bounds.Height)));
+        // Monitor elegido pero ahora desenchufado: conservarlo como opción para que Guardar
+        // no degrade a "automático" una preferencia que sigue siendo válida (Aplicar ya cae
+        // al monitor cercano en runtime sin destruir la elección)
+        if (favorito.MonitorDispositivo.Length > 0 &&
+            monitores.FindIndex(m => m.Dispositivo == favorito.MonitorDispositivo) < 0)
+            monitores.Add((favorito.MonitorDispositivo, favorito.MonitorDispositivo));
         int monitorActual = Math.Max(0, monitores.FindIndex(m => m.Dispositivo == favorito.MonitorDispositivo));
         var botonMonitor = BotonChico(monitores[monitorActual].Texto);
         botonMonitor.Location = new Point(44, 226);
@@ -1078,8 +1107,15 @@ public sealed class MainForm : Form
             favorito.RetardoSegundos = int.TryParse(cajaRetardo.Text, out int retardo) && retardo > 0
                 ? Math.Min(retardo, 600) : 0;
             ConfigStore.Guardar(_config);
-            // Ventana ya sin bordes: re-aplicar al momento con las opciones nuevas
-            if (v.Hwnd != IntPtr.Zero && BorderlessService.TieneEstadoGuardado(v.Hwnd))
+            // Ventana ya sin bordes: re-aplicar al momento con las opciones nuevas.
+            // Restaurar primero — si no, pasar a "solo bordes" desde "estirar" no devolvería
+            // el tamaño original (SWP_NOMOVE|SWP_NOSIZE sobre una ventana ya estirada).
+            // El diálogo es modal y pudo estar abierto un buen rato: comprobar que el hwnd
+            // sigue vivo y sigue siendo del mismo proceso (los hwnd se reciclan).
+            if (v.Hwnd != IntPtr.Zero && NativeMethods.IsWindow(v.Hwnd) &&
+                MismaVentanaDeProceso(v.Hwnd, favorito.Proceso) &&
+                BorderlessService.TieneEstadoGuardado(v.Hwnd) &&
+                BorderlessService.Restaurar(v.Hwnd, out _))
                 BorderlessService.Aplicar(v.Hwnd, favorito, out _);
             _estado.Text = Textos.F("estado.opciones", favorito.Proceso);
             dialogo.Close();
@@ -1088,8 +1124,6 @@ public sealed class MainForm : Form
         pie.Controls.Add(cancelar);
         pie.Controls.Add(guardar);
 
-        dialogo.Controls.Add(tituloOpciones);
-        dialogo.Controls.Add(cerrarOpciones);
         dialogo.Controls.Add(modoMonitor);
         dialogo.Controls.Add(modoSoloBordes);
         dialogo.Controls.Add(modoPersonalizado);
@@ -1110,6 +1144,20 @@ public sealed class MainForm : Form
         dialogo.ShowDialog(this);
     }
 
+    private static bool MismaVentanaDeProceso(IntPtr hwnd, string proceso)
+    {
+        NativeMethods.GetWindowThreadProcessId(hwnd, out uint pid);
+        try
+        {
+            using var p = System.Diagnostics.Process.GetProcessById((int)pid);
+            return p.ProcessName.Equals(proceso, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private void OcultarSeleccionada()
     {
         if (_lista.Seleccion is not { } v)
@@ -1117,6 +1165,9 @@ public sealed class MainForm : Form
             _estado.Text = Textos.T("estado.selecciona");
             return;
         }
+        // Un favorito no se oculta: sin fila no habría forma de editar sus opciones ni de
+        // sacarlo de la biblioteca, mientras el watcher seguiría aplicándolo cada 2 s
+        if (EsFavorito(v.ProcessName)) return;
         if (!EstaOculta(v.ProcessName)) _config.Ocultas.Add(v.ProcessName);
         ConfigStore.Guardar(_config);
         _estado.Text = Textos.F("estado.oculta", v.ProcessName);
@@ -1284,10 +1335,17 @@ public sealed class MainForm : Form
         {
             capturando = false;
             boton.Text = leer();
+            // Reponer el estado global desde config (con su fallback): así ni una captura
+            // fallida ni una cancelada dejan el id sin ningún hotkey registrado
+            RegistrarHotkeys();
         }
         boton.Click += (_, _) =>
         {
+            if (capturando) return;
             capturando = true;
+            // Soltar el registro actual: si no, pulsar el propio combo vigente se lo
+            // tragaría RegisterHotKey (llega como WM_HOTKEY y KeyDown nunca lo ve)
+            NativeMethods.UnregisterHotKey(Handle, id);
             boton.Text = Textos.T("hotkey.captura");
         };
         boton.LostFocus += (_, _) => { if (capturando) Terminar(); };
@@ -1313,10 +1371,12 @@ public sealed class MainForm : Form
                 return;
             }
             string combo = ComboATexto(e.Modifiers, e.KeyCode);
-            NativeMethods.UnregisterHotKey(Handle, id);
+            // Registro de prueba: solo comprueba que el combo está libre; Terminar deja
+            // el registro definitivo según config vía RegistrarHotkeys
             if (ParseHotkey(combo, out uint mods, out uint vk) &&
-                NativeMethods.RegisterHotKey(Handle, id, mods, vk))
+                NativeMethods.RegisterHotKey(Handle, id, mods | NativeMethods.MOD_NOREPEAT, vk))
             {
+                NativeMethods.UnregisterHotKey(Handle, id);
                 escribir(combo);
                 ConfigStore.Guardar(_config);
                 _estado.Text = Textos.F("estado.hotkeyGuardado", combo);
@@ -1324,8 +1384,6 @@ public sealed class MainForm : Form
             else
             {
                 _estado.Text = Textos.F("estado.hotkeyError", combo);
-                if (ParseHotkey(leer(), out uint m0, out uint v0))
-                    NativeMethods.RegisterHotKey(Handle, id, m0, v0); // reponer el anterior
             }
             Terminar();
         };
@@ -1420,8 +1478,9 @@ public sealed class MainForm : Form
         foreach (var favorito in _config.Favoritos)
             if (!ventanas.Any(v => v.ProcessName.Equals(favorito.Proceso, StringComparison.OrdinalIgnoreCase)))
                 visibles.Add(new WindowInfo(IntPtr.Zero, Textos.T("fila.apagada"), favorito.Proceso, 0));
-        // Las ocultas desaparecen de la lista; el watcher no se entera (usa la enumeración cruda)
-        visibles.RemoveAll(v => EstaOculta(v.ProcessName));
+        // Las ocultas desaparecen de la lista; el watcher no se entera (usa la enumeración
+        // cruda). Los favoritos nunca se filtran: su fila es la única vía a sus opciones
+        visibles.RemoveAll(v => EstaOculta(v.ProcessName) && !EsFavorito(v.ProcessName));
         _lista.Cargar(visibles);
         ActualizarBotonAccion();
     }
@@ -1456,9 +1515,11 @@ public sealed class MainForm : Form
         }
         bool aplicada = BorderlessService.TieneEstadoGuardado(v.Hwnd);
         string error;
+        // Si la fila es un favorito, el camino manual aplica sus mismas opciones que el
+        // watcher: si no, un clic estiraría al monitor un favorito configurado en SoloBordes
         bool exito = aplicada
             ? BorderlessService.Restaurar(v.Hwnd, out error)
-            : BorderlessService.Aplicar(v.Hwnd, out error);
+            : BorderlessService.Aplicar(v.Hwnd, BuscarFavorito(v.ProcessName), out error);
         if (exito)
         {
             if (aplicada) _deshechasManualmente.Add(v.Hwnd.ToInt64());
@@ -1701,10 +1762,16 @@ public sealed class MainForm : Form
 
         public void Cargar(IReadOnlyList<WindowInfo> ventanas)
         {
-            IntPtr? previa = Seleccion?.Hwnd;
+            // Reanclar por hwnd; las filas de favoritos apagados comparten Hwnd cero, así
+            // que ahí se reancla por nombre de proceso — si no, cualquier refresco movería
+            // la selección al primer favorito apagado y Opciones/Quitar tocarían otro juego
+            var previa = Seleccion;
             _filas.Clear();
             _filas.AddRange(ventanas);
-            _seleccionada = previa is { } h ? _filas.FindIndex(f => f.Hwnd == h) : -1;
+            _seleccionada = previa is null ? -1
+                : previa.Hwnd != IntPtr.Zero ? _filas.FindIndex(f => f.Hwnd == previa.Hwnd)
+                : _filas.FindIndex(f => f.Hwnd == IntPtr.Zero &&
+                    f.ProcessName.Equals(previa.ProcessName, StringComparison.OrdinalIgnoreCase));
             AjustarLimites();
             Invalidate();
         }

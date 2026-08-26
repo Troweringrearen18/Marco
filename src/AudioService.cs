@@ -10,34 +10,47 @@ namespace Marco;
 /// </summary>
 public static class AudioService
 {
-    /// <returns>true si se tocó al menos una sesión de ese pid.</returns>
+    /// <returns>true si se cambió de verdad al menos una sesión de ese pid.</returns>
     public static bool Silenciar(int pid, bool silencio)
     {
+        object? enumerador = null, dispositivoObj = null, activado = null, sesionesObj = null;
         try
         {
-            var enumerador = (IMMDeviceEnumerator)new MMDeviceEnumerator();
-            if (enumerador.GetDefaultAudioEndpoint(0 /* eRender */, 1 /* eMultimedia */, out IMMDevice dispositivo) != 0)
+            enumerador = new MMDeviceEnumerator();
+            if (((IMMDeviceEnumerator)enumerador)
+                    .GetDefaultAudioEndpoint(0 /* eRender */, 1 /* eMultimedia */, out IMMDevice dispositivo) != 0)
                 return false;
+            dispositivoObj = dispositivo;
             Guid iid = typeof(IAudioSessionManager2).GUID;
-            if (dispositivo.Activate(ref iid, CLSCTX_ALL, IntPtr.Zero, out object activado) != 0)
+            if (dispositivo.Activate(ref iid, CLSCTX_ALL, IntPtr.Zero, out activado) != 0)
                 return false;
-            var gestor = (IAudioSessionManager2)activado;
-            if (gestor.GetSessionEnumerator(out IAudioSessionEnumerator sesiones) != 0)
+            if (((IAudioSessionManager2)activado!).GetSessionEnumerator(out IAudioSessionEnumerator sesiones) != 0)
                 return false;
+            sesionesObj = sesiones;
 
             bool alguna = false;
             sesiones.GetCount(out int total);
             for (int i = 0; i < total; i++)
             {
                 if (sesiones.GetSession(i, out IAudioSessionControl control) != 0) continue;
-                // AUDCLNT_S_NO_SINGLE_PROCESS es un HRESULT de éxito (> 0) y rellena el pid
-                if (control is IAudioSessionControl2 control2 &&
-                    control2.GetProcessId(out uint sesionPid) >= 0 && sesionPid == (uint)pid &&
-                    control is ISimpleAudioVolume volumen)
+                try
                 {
-                    Guid contexto = Guid.Empty;
-                    volumen.SetMute(silencio, ref contexto);
-                    alguna = true;
+                    // AUDCLNT_S_NO_SINGLE_PROCESS es un HRESULT de éxito (> 0) y rellena el pid
+                    if (control is IAudioSessionControl2 control2 &&
+                        control2.GetProcessId(out uint sesionPid) >= 0 && sesionPid == (uint)pid &&
+                        control is ISimpleAudioVolume volumen)
+                    {
+                        // Una sesión que el usuario ya muteó en el mezclador no es nuestra:
+                        // si la contáramos, al recuperar el foco le devolveríamos el audio
+                        // que él mismo había quitado
+                        if (silencio && volumen.GetMute(out bool yaMuda) >= 0 && yaMuda) continue;
+                        Guid contexto = Guid.Empty;
+                        if (volumen.SetMute(silencio, ref contexto) >= 0) alguna = true;
+                    }
+                }
+                finally
+                {
+                    Marshal.ReleaseComObject(control);
                 }
             }
             return alguna;
@@ -45,6 +58,13 @@ public static class AudioService
         catch
         {
             return false;
+        }
+        finally
+        {
+            // Liberación determinista: sin esto cada llamada deja decenas de RCWs vivos
+            // apuntando al motor de audio hasta que el GC pase por ellos
+            foreach (object? com in new[] { sesionesObj, activado, dispositivoObj, enumerador })
+                if (com is not null) Marshal.ReleaseComObject(com);
         }
     }
 

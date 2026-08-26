@@ -8,12 +8,15 @@ static class Program
         // Antes de la rama CLI: aquí se activa PerMonitorV2, y sin él GetMonitorInfo
         // devuelve coordenadas virtualizadas con escalado ≠ 100%
         ApplicationConfiguration.Initialize();
-        Textos.Idioma = ConfigStore.Cargar().Idioma;
+        // Una sola lectura de config.json: idioma y (en el CLI) opciones de favoritos
+        // salen del mismo snapshot, sin releer el fichero
+        var config = ConfigStore.Cargar();
+        Textos.Idioma = config.Idioma;
 
         // Modo CLI para scripts y pruebas: Marco --apply <proceso> | --restore <proceso>
         // (el CLI queda fuera del candado de instancia única a propósito)
         if (args.Length >= 2 && args[0] is "--apply" or "--restore")
-            return Cli(args[0], args[1]);
+            return Cli(args[0], args[1], config);
 
         // Una sola instancia de la GUI: la segunda despierta a la primera y se retira
         using var unica = new Mutex(initiallyOwned: true, @"Local\Marco.InstanciaUnica", out bool primera);
@@ -40,7 +43,7 @@ static class Program
     }
 
     /// <returns>0 ok, 1 falló la operación, 2 no hay ventana de ese proceso</returns>
-    private static int Cli(string accion, string proceso)
+    private static int Cli(string accion, string proceso, Config config)
     {
         var ventanas = WindowEnumerator.Listar()
             .Where(v => v.ProcessName.Equals(proceso, StringComparison.OrdinalIgnoreCase))
@@ -52,7 +55,7 @@ static class Program
         }
 
         // Si el proceso está en la biblioteca, el CLI aplica sus mismas opciones
-        var favorito = ConfigStore.Cargar().Favoritos
+        var favorito = config.Favoritos
             .FirstOrDefault(f => f.Proceso.Equals(proceso, StringComparison.OrdinalIgnoreCase));
 
         bool ok = true;

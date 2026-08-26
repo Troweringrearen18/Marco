@@ -60,7 +60,8 @@ public static class BorderlessService
         }
 
         // Si se re-aplica, conservar el primer estado guardado: es el original de verdad
-        if (!Guardadas.ContainsKey(hwnd.ToInt64()))
+        bool estadoNuevo = !Guardadas.ContainsKey(hwnd.ToInt64());
+        if (estadoNuevo)
         {
             Guardadas[hwnd.ToInt64()] = new EstadoVentana
             {
@@ -80,13 +81,25 @@ public static class BorderlessService
         // UIPI falla en silencio: la única comprobación fiable es releer el estilo
         if ((NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GWL_STYLE) & NativeMethods.WS_CAPTION) != 0)
         {
+            // La ventana no se tocó: retirar el estado recién creado o TieneEstadoGuardado
+            // mentiría (píldora "sin bordes", botón Deshacer y watcher darían la ventana por hecha)
+            if (estadoNuevo)
+            {
+                Guardadas.Remove(hwnd.ToInt64());
+                Persistir();
+            }
             error = Textos.T("err.uipi");
             return false;
         }
 
         const uint flags = NativeMethods.SWP_FRAMECHANGED | NativeMethods.SWP_SHOWWINDOW |
                            NativeMethods.SWP_NOOWNERZORDER;
-        IntPtr encima = opciones?.SiempreEncima == true ? NativeMethods.HWND_TOPMOST : NativeMethods.HWND_TOP;
+        // HWND_TOP no saca a una ventana de la banda topmost: al desmarcar "siempre encima"
+        // en un favorito hay que rematar con HWND_NOTOPMOST (mismo motivo que en Restaurar).
+        // Sin opciones (ventana ajena a la biblioteca) se respeta su topmost como en v1.0.
+        IntPtr encima = opciones?.SiempreEncima == true ? NativeMethods.HWND_TOPMOST
+            : opciones is not null && (exStyle & NativeMethods.WS_EX_TOPMOST) != 0 ? NativeMethods.HWND_NOTOPMOST
+            : NativeMethods.HWND_TOP;
 
         // Solo quitar bordes: ni mover ni estirar, pero SWP_FRAMECHANGED siempre
         // (sin él, el borde se queda pintado aunque el estilo ya no esté)
@@ -139,6 +152,13 @@ public static class BorderlessService
             if (opciones.Alto > 0) alto = opciones.Alto;
             x = opciones.PosX ?? r.Left + (r.Right - r.Left - ancho) / 2;
             y = opciones.PosY ?? r.Top + (r.Bottom - r.Top - alto) / 2;
+            // Posición guardada para un monitor que ya no está: sin bordes no habría forma
+            // de arrastrarla de vuelta, así que si queda fuera de toda pantalla, centrar
+            if (!Screen.AllScreens.Any(s => s.Bounds.IntersectsWith(new Rectangle(x, y, ancho, alto))))
+            {
+                x = r.Left + (r.Right - r.Left - ancho) / 2;
+                y = r.Top + (r.Bottom - r.Top - alto) / 2;
+            }
         }
 
         if (!NativeMethods.SetWindowPos(hwnd, encima, x, y, ancho, alto, flags))
