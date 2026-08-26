@@ -15,4 +15,12 @@
     <Version>1.1.0</Version>
   </PropertyGroup>
 
+  <!-- El publish deja Marco.exe en la raíz del repo (está en .gitignore), no enterrado
+       en bin\Release\...\publish; sin .pdb, que no se distribuye -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishDir>..\</PublishDir>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
 </Project>
