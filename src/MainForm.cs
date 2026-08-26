@@ -14,6 +14,7 @@ public sealed class MainForm : Form
     private readonly Button _maximizar;
     private readonly BotonRedondeado _botonAccion;
     private readonly BotonRedondeado _botonFavorito;
+    private readonly BotonRedondeado _botonOpciones;
     private readonly BotonRedondeado _botonActualizar;
     private readonly BotonRedondeado _botonAjustes;
     private readonly TableLayoutPanel _panelAjustes;
@@ -24,6 +25,12 @@ public sealed class MainForm : Form
     // Deshechas a mano por el usuario: el watcher las respeta mientras viva la ventana;
     // al relanzar el juego (hwnd nuevo) vuelve el borderless automático
     private readonly HashSet<long> _deshechasManualmente = new();
+    // Primer avistamiento de cada hwnd favorito, para el retardo configurable
+    private readonly Dictionary<long, DateTime> _vistasWatcher = new();
+    // Pids que Marco silenció: solo se desmutea lo que se muteó aquí
+    private readonly HashSet<int> _pidsSilenciados = new();
+    private IntPtr _ratonBloqueado;
+    private bool _watcherPausado;
     private readonly Config _config;
     private long _huellaVentanas;
     private bool _iniciarOculto;
@@ -132,10 +139,13 @@ public sealed class MainForm : Form
         };
         _botonAccion = Boton(Textos.T("boton.aplicar"), AccionPrincipal);
         _botonFavorito = Boton(Textos.T("boton.guardar"), AlternarFavorito);
+        _botonOpciones = Boton(Textos.T("boton.opciones"), AbrirOpciones);
+        _botonOpciones.Visible = false; // solo con un favorito seleccionado
         _botonActualizar = Boton(Textos.T("boton.actualizar"), Refrescar);
         _botonAjustes = Boton(Textos.T("boton.ajustes"), AlternarAjustes);
         _botones.Controls.Add(_botonAccion);
         _botones.Controls.Add(_botonFavorito);
+        _botones.Controls.Add(_botonOpciones);
         _botones.Controls.Add(_botonActualizar);
         _botones.Controls.Add(_botonAjustes);
 
@@ -169,6 +179,10 @@ public sealed class MainForm : Form
             _bandeja.Visible = false;
             _bandeja.Dispose();
             NativeMethods.UnregisterHotKey(Handle, 1);
+            NativeMethods.UnregisterHotKey(Handle, 2);
+            // No dejar rastro al salir: ni cursor preso ni juegos mudos huérfanos
+            NativeMethods.ClipCursor(IntPtr.Zero);
+            foreach (int pid in _pidsSilenciados) AudioService.Silenciar(pid, false);
         };
 
         // Estilo LS: sin líneas separadoras — la tarjeta redondeada la pinta ListaSuave
@@ -240,6 +254,9 @@ public sealed class MainForm : Form
         // Hotkey global Ctrl+Alt+B: borderless/deshacer sobre la ventana activa
         NativeMethods.RegisterHotKey(Handle, 1,
             NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, 0x42 /* B */);
+        // Ctrl+Alt+L: bloquear/liberar el ratón sobre la ventana activa
+        NativeMethods.RegisterHotKey(Handle, 2,
+            NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, 0x4C /* L */);
     }
 
     private void ArrastrarVentana(object? sender, MouseEventArgs e)
@@ -282,6 +299,14 @@ public sealed class MainForm : Form
     {
         var menuBandeja = new ContextMenuStrip();
         menuBandeja.Items.Add(Textos.T("bandeja.mostrar"), null, (_, _) => MostrarDesdeBandeja());
+        // Pausa del automático: solo esta sesión, como en el BG clásico
+        var pausa = new ToolStripMenuItem(Textos.T("bandeja.pausa"))
+        {
+            CheckOnClick = true,
+            Checked = _watcherPausado,
+        };
+        pausa.CheckedChanged += (_, _) => _watcherPausado = pausa.Checked;
+        menuBandeja.Items.Add(pausa);
         menuBandeja.Items.Add(new ToolStripSeparator());
         menuBandeja.Items.Add(Textos.T("bandeja.salir"), null, (_, _) => { _salir = true; Close(); });
         _bandeja.ContextMenuStrip?.Dispose();
@@ -323,26 +348,41 @@ public sealed class MainForm : Form
         var ventanas = WindowEnumerator.Listar();
 
         bool cambio = false;
-        if (_config.Favoritos.Count > 0)
+        if (!_watcherPausado && _config.Favoritos.Count > 0)
         {
             foreach (var v in ventanas)
             {
-                if (!EsFavorito(v.ProcessName) || v.Elevada) continue;
+                if (v.Elevada || BuscarFavorito(v.ProcessName) is not { } favorito) continue;
                 long clave = v.Hwnd.ToInt64();
                 if (_watcherFallidas.Contains(clave) || _deshechasManualmente.Contains(clave)) continue;
                 bool aplicada = BorderlessService.TieneEstadoGuardado(v.Hwnd);
+                // Retardo configurado: dejar al juego terminar de arrancar antes del primer toque
+                if (!aplicada && favorito.RetardoSegundos > 0)
+                {
+                    if (!_vistasWatcher.TryGetValue(clave, out var vista))
+                    {
+                        _vistasWatcher[clave] = DateTime.UtcNow;
+                        continue;
+                    }
+                    if ((DateTime.UtcNow - vista).TotalSeconds < favorito.RetardoSegundos) continue;
+                }
                 bool conBorde = (NativeMethods.GetWindowLongPtr(v.Hwnd, NativeMethods.GWL_STYLE)
                                  & NativeMethods.WS_CAPTION) != 0;
                 // Ventana favorita nueva, o el juego re-impuso su borde al cambiar de escena
                 if (!aplicada || conBorde)
                 {
-                    if (BorderlessService.Aplicar(v.Hwnd, out _)) cambio = true;
+                    if (BorderlessService.Aplicar(v.Hwnd, favorito, out _)) cambio = true;
                     else _watcherFallidas.Add(clave); // no insistir cada 2 s contra un fallo persistente
                 }
             }
             _watcherFallidas.RemoveWhere(h => !NativeMethods.IsWindow(new IntPtr(h)));
             _deshechasManualmente.RemoveWhere(h => !NativeMethods.IsWindow(new IntPtr(h)));
+            foreach (long clave in _vistasWatcher.Keys.Where(h => !NativeMethods.IsWindow(new IntPtr(h))).ToList())
+                _vistasWatcher.Remove(clave);
         }
+
+        MantenerBloqueoRaton();
+        MantenerSilencios(ventanas);
 
         long huella = ventanas.Count;
         foreach (var v in ventanas) huella = unchecked(huella * 31 + v.Hwnd.ToInt64());
@@ -353,8 +393,10 @@ public sealed class MainForm : Form
         }
     }
 
-    private bool EsFavorito(string proceso) =>
-        _config.Favoritos.Any(f => f.Equals(proceso, StringComparison.OrdinalIgnoreCase));
+    private bool EsFavorito(string proceso) => BuscarFavorito(proceso) is not null;
+
+    private Favorito? BuscarFavorito(string proceso) =>
+        _config.Favoritos.FirstOrDefault(f => f.Proceso.Equals(proceso, StringComparison.OrdinalIgnoreCase));
 
     private void AlternarFavorito()
     {
@@ -365,16 +407,96 @@ public sealed class MainForm : Form
         }
         if (EsFavorito(v.ProcessName))
         {
-            _config.Favoritos.RemoveAll(f => f.Equals(v.ProcessName, StringComparison.OrdinalIgnoreCase));
+            _config.Favoritos.RemoveAll(f => f.Proceso.Equals(v.ProcessName, StringComparison.OrdinalIgnoreCase));
             _estado.Text = Textos.F("estado.fueraBiblio", v.ProcessName);
         }
         else
         {
-            _config.Favoritos.Add(v.ProcessName);
+            _config.Favoritos.Add(new Favorito { Proceso = v.ProcessName });
             _estado.Text = Textos.F("estado.enBiblio", v.ProcessName);
         }
         ConfigStore.Guardar(_config);
         Refrescar();
+    }
+
+    // El bloqueo de ratón es global y frágil: cualquier cambio de foco lo limpia y el juego
+    // puede pisarlo. El watcher lo re-impone solo si la ventana bloqueada sigue activa;
+    // re-clipar sin foco secuestraría el ratón del usuario.
+    private void MantenerBloqueoRaton()
+    {
+        if (_ratonBloqueado == IntPtr.Zero) return;
+        if (!NativeMethods.IsWindow(_ratonBloqueado))
+        {
+            _ratonBloqueado = IntPtr.Zero;
+            NativeMethods.ClipCursor(IntPtr.Zero);
+            return;
+        }
+        if (NativeMethods.GetForegroundWindow() == _ratonBloqueado)
+            ClipRaton(_ratonBloqueado);
+    }
+
+    private static void ClipRaton(IntPtr hwnd)
+    {
+        // Rect cliente en coordenadas de pantalla: GetWindowRect incluiría los bordes
+        if (!NativeMethods.GetClientRect(hwnd, out var rc)) return;
+        var esquina = new NativeMethods.POINT();
+        if (!NativeMethods.ClientToScreen(hwnd, ref esquina)) return;
+        var r = new NativeMethods.RECT
+        {
+            Left = esquina.X,
+            Top = esquina.Y,
+            Right = esquina.X + rc.Right,
+            Bottom = esquina.Y + rc.Bottom,
+        };
+        NativeMethods.ClipCursor(ref r);
+    }
+
+    private void AlternarBloqueoRaton()
+    {
+        _bandeja.BalloonTipTitle = "Marco";
+        if (_ratonBloqueado != IntPtr.Zero)
+        {
+            _ratonBloqueado = IntPtr.Zero;
+            NativeMethods.ClipCursor(IntPtr.Zero);
+            _bandeja.BalloonTipText = Textos.T("globo.ratonOff");
+        }
+        else
+        {
+            IntPtr hwnd = NativeMethods.GetForegroundWindow();
+            if (hwnd == IntPtr.Zero || hwnd == Handle) return;
+            _ratonBloqueado = hwnd;
+            ClipRaton(hwnd);
+            _bandeja.BalloonTipText = Textos.T("globo.ratonOn");
+        }
+        _bandeja.ShowBalloonTip(1200);
+    }
+
+    // Silenciar en segundo plano: mutea la sesión de audio del favorito cuando su ventana
+    // pierde el foco y la devuelve al volver o al cerrarse. Solo se toca lo muteado aquí.
+    private void MantenerSilencios(List<WindowInfo> ventanas)
+    {
+        if (_watcherPausado || _config.Favoritos.Count == 0)
+        {
+            if (_pidsSilenciados.Count == 0) return;
+            foreach (int pid in _pidsSilenciados) AudioService.Silenciar(pid, false);
+            _pidsSilenciados.Clear();
+            return;
+        }
+
+        NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out uint pidActivo);
+        var conSilencio = new HashSet<int>();
+        foreach (var v in ventanas)
+            if (BuscarFavorito(v.ProcessName) is { SilenciarFondo: true })
+                conSilencio.Add(v.Pid);
+
+        foreach (int pid in conSilencio)
+            if (pid != pidActivo && !_pidsSilenciados.Contains(pid) && AudioService.Silenciar(pid, true))
+                _pidsSilenciados.Add(pid);
+        foreach (int pid in _pidsSilenciados.Where(p => p == pidActivo || !conSilencio.Contains(p)).ToList())
+        {
+            AudioService.Silenciar(pid, false);
+            _pidsSilenciados.Remove(pid);
+        }
     }
 
     // Hotkey global: borderless/deshacer sobre la ventana en primer plano
@@ -490,6 +612,8 @@ public sealed class MainForm : Form
         const int WM_NCHITTEST = 0x84;
         if (m.Msg == NativeMethods.WM_HOTKEY && m.WParam == (IntPtr)1)
             AlternarVentanaActiva();
+        if (m.Msg == NativeMethods.WM_HOTKEY && m.WParam == (IntPtr)2)
+            AlternarBloqueoRaton();
         base.WndProc(ref m);
         if (m.Msg != WM_NCHITTEST || m.Result != (IntPtr)1 || WindowState != FormWindowState.Normal)
             return;
@@ -741,7 +865,7 @@ public sealed class MainForm : Form
 
         var cuerpo = new Label
         {
-            Text = Textos.T("ayuda.texto"),
+            Text = Textos.T("ayuda.texto") + "\n\n" + Textos.T("ayuda.raton"),
             Location = new Point(18, 52),
             Size = new Size(dialogo.ClientSize.Width - 36, dialogo.ClientSize.Height - 70),
             ForeColor = _texto,
@@ -753,6 +877,217 @@ public sealed class MainForm : Form
         dialogo.Controls.Add(cerrarAyuda);
         dialogo.Controls.Add(cuerpo);
         dialogo.ShowDialog(this);
+    }
+
+    // Opciones por favorito: modo de tamaño, monitor, siempre encima, silenciar de fondo
+    // y retardo. Mismo chrome temático que la Ayuda; Esc cierra sin guardar.
+    private void AbrirOpciones()
+    {
+        if (_lista.Seleccion is not { } v || BuscarFavorito(v.ProcessName) is not { } favorito) return;
+
+        using var dialogo = new Form
+        {
+            Text = Textos.F("opciones.titulo", favorito.Proceso),
+            FormBorderStyle = FormBorderStyle.None,
+            StartPosition = FormStartPosition.CenterParent,
+            ShowInTaskbar = false,
+            ClientSize = new Size(470, 452),
+            BackColor = _fondo,
+            KeyPreview = true,
+        };
+        dialogo.HandleCreated += (_, _) =>
+        {
+            int redondeo = NativeMethods.DWMWCP_ROUND;
+            _ = NativeMethods.DwmSetWindowAttribute(dialogo.Handle,
+                NativeMethods.DWMWA_WINDOW_CORNER_PREFERENCE, ref redondeo, sizeof(int));
+        };
+        dialogo.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) dialogo.Close(); };
+        void Arrastrar(object? s, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Left) return;
+            NativeMethods.ReleaseCapture();
+            NativeMethods.SendMessage(dialogo.Handle, NativeMethods.WM_NCLBUTTONDOWN,
+                new IntPtr(NativeMethods.HTCAPTION), IntPtr.Zero);
+        }
+        dialogo.MouseDown += Arrastrar;
+
+        var tituloOpciones = new Label
+        {
+            Text = Textos.F("opciones.titulo", favorito.Proceso),
+            AutoSize = true,
+            Location = new Point(18, 14),
+            Font = new Font("Segoe UI Semibold", 10.5f),
+            ForeColor = _texto,
+            BackColor = Color.Transparent,
+        };
+        tituloOpciones.MouseDown += Arrastrar;
+        var cerrarOpciones = BotonTitulo("\uE8BB", () => dialogo.Close());
+        cerrarOpciones.BackColor = _fondo;
+        cerrarOpciones.ForeColor = _textoSuave;
+        cerrarOpciones.FlatAppearance.MouseOverBackColor = _panel;
+        cerrarOpciones.Location = new Point(dialogo.ClientSize.Width - cerrarOpciones.Width - 8, 8);
+
+        RadioButton Radio(string clave, int y, bool marcado) => new()
+        {
+            Text = Textos.T(clave),
+            AutoSize = true,
+            Location = new Point(22, y),
+            ForeColor = _texto,
+            BackColor = Color.Transparent,
+            Checked = marcado,
+        };
+        var modoMonitor = Radio("opciones.modoMonitor", 54, favorito.Modo == ModoTamano.Monitor);
+        var modoSoloBordes = Radio("opciones.modoSoloBordes", 82, favorito.Modo == ModoTamano.SoloBordes);
+        var modoPersonalizado = Radio("opciones.modoPersonalizado", 110, favorito.Modo == ModoTamano.Personalizado);
+
+        TextBox Caja(string valor, int x, int y) => new()
+        {
+            Text = valor,
+            Location = new Point(x, y),
+            Width = 62,
+            BackColor = _panel,
+            ForeColor = _texto,
+            BorderStyle = BorderStyle.FixedSingle,
+        };
+        Label Etiqueta(string texto, int x, int y, bool suave = false) => new()
+        {
+            Text = texto,
+            AutoSize = true,
+            Location = new Point(x, y),
+            ForeColor = suave ? _textoSuave : _texto,
+            BackColor = Color.Transparent,
+        };
+
+        var etAncho = Etiqueta(Textos.T("opciones.ancho"), 44, 141);
+        var cajaAncho = Caja(favorito.Ancho > 0 ? favorito.Ancho.ToString() : "", 44, 162);
+        var etAlto = Etiqueta(Textos.T("opciones.alto"), 118, 141);
+        var cajaAlto = Caja(favorito.Alto > 0 ? favorito.Alto.ToString() : "", 118, 162);
+        var etPosicion = Etiqueta(Textos.T("opciones.posicion"), 200, 141, suave: true);
+        var cajaX = Caja(favorito.PosX?.ToString() ?? "", 200, 162);
+        var cajaY = Caja(favorito.PosY?.ToString() ?? "", 272, 162);
+        void RefrescarHabilitado()
+        {
+            foreach (Control c in new Control[] { etAncho, cajaAncho, etAlto, cajaAlto, etPosicion, cajaX, cajaY })
+                c.Enabled = modoPersonalizado.Checked;
+        }
+        modoPersonalizado.CheckedChanged += (_, _) => RefrescarHabilitado();
+        RefrescarHabilitado();
+
+        // Monitor: botón que rota entre "automático" y cada pantalla conectada. Se persiste
+        // el DeviceName (estable entre reinicios); si esa pantalla ya no está, cae al cercano
+        var etMonitor = Etiqueta(Textos.T("opciones.monitor"), 22, 204);
+        var pantallas = Screen.AllScreens;
+        var monitores = new List<(string Dispositivo, string Texto)>
+        {
+            ("", Textos.T("opciones.monitorAuto")),
+        };
+        for (int i = 0; i < pantallas.Length; i++)
+            monitores.Add((pantallas[i].DeviceName,
+                Textos.F("opciones.monitorN", i + 1, pantallas[i].Bounds.Width, pantallas[i].Bounds.Height)));
+        int monitorActual = Math.Max(0, monitores.FindIndex(m => m.Dispositivo == favorito.MonitorDispositivo));
+        var botonMonitor = BotonChico(monitores[monitorActual].Texto);
+        botonMonitor.Location = new Point(44, 226);
+        botonMonitor.Click += (_, _) =>
+        {
+            monitorActual = (monitorActual + 1) % monitores.Count;
+            botonMonitor.Text = monitores[monitorActual].Texto;
+        };
+
+        CheckBox Casilla(string clave, int y, bool marcado) => new()
+        {
+            Text = Textos.T(clave),
+            AutoSize = true,
+            Location = new Point(22, y),
+            ForeColor = _texto,
+            BackColor = Color.Transparent,
+            Checked = marcado,
+        };
+        var siempreEncima = Casilla("opciones.siempreEncima", 268, favorito.SiempreEncima);
+        var silenciar = Casilla("opciones.silenciar", 296, favorito.SilenciarFondo);
+
+        var etRetardo = Etiqueta(Textos.T("opciones.retardo"), 22, 330);
+        var cajaRetardo = Caja(favorito.RetardoSegundos > 0 ? favorito.RetardoSegundos.ToString() : "", 24, 352);
+
+        var pie = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Bottom,
+            FlowDirection = FlowDirection.RightToLeft,
+            AutoSize = true,
+            Padding = new Padding(10),
+            BackColor = Color.Transparent,
+        };
+        var cancelar = BotonChico(Textos.T("opciones.cancelar"));
+        cancelar.Click += (_, _) => dialogo.Close();
+        var guardar = BotonChico(Textos.T("opciones.guardar"));
+        guardar.Click += (_, _) =>
+        {
+            favorito.Modo = modoSoloBordes.Checked ? ModoTamano.SoloBordes
+                : modoPersonalizado.Checked ? ModoTamano.Personalizado
+                : ModoTamano.Monitor;
+            favorito.Ancho = int.TryParse(cajaAncho.Text, out int ancho) && ancho > 0 ? ancho : 0;
+            favorito.Alto = int.TryParse(cajaAlto.Text, out int alto) && alto > 0 ? alto : 0;
+            favorito.PosX = int.TryParse(cajaX.Text, out int x) ? x : null;
+            favorito.PosY = int.TryParse(cajaY.Text, out int y) ? y : null;
+            favorito.MonitorDispositivo = monitores[monitorActual].Dispositivo;
+            favorito.SiempreEncima = siempreEncima.Checked;
+            favorito.SilenciarFondo = silenciar.Checked;
+            favorito.RetardoSegundos = int.TryParse(cajaRetardo.Text, out int retardo) && retardo > 0
+                ? Math.Min(retardo, 600) : 0;
+            ConfigStore.Guardar(_config);
+            // Ventana ya sin bordes: re-aplicar al momento con las opciones nuevas
+            if (v.Hwnd != IntPtr.Zero && BorderlessService.TieneEstadoGuardado(v.Hwnd))
+                BorderlessService.Aplicar(v.Hwnd, favorito, out _);
+            _estado.Text = Textos.F("estado.opciones", favorito.Proceso);
+            dialogo.Close();
+            Refrescar();
+        };
+        pie.Controls.Add(cancelar);
+        pie.Controls.Add(guardar);
+
+        dialogo.Controls.Add(tituloOpciones);
+        dialogo.Controls.Add(cerrarOpciones);
+        dialogo.Controls.Add(modoMonitor);
+        dialogo.Controls.Add(modoSoloBordes);
+        dialogo.Controls.Add(modoPersonalizado);
+        dialogo.Controls.Add(etAncho);
+        dialogo.Controls.Add(cajaAncho);
+        dialogo.Controls.Add(etAlto);
+        dialogo.Controls.Add(cajaAlto);
+        dialogo.Controls.Add(etPosicion);
+        dialogo.Controls.Add(cajaX);
+        dialogo.Controls.Add(cajaY);
+        dialogo.Controls.Add(etMonitor);
+        dialogo.Controls.Add(botonMonitor);
+        dialogo.Controls.Add(siempreEncima);
+        dialogo.Controls.Add(silenciar);
+        dialogo.Controls.Add(etRetardo);
+        dialogo.Controls.Add(cajaRetardo);
+        dialogo.Controls.Add(pie);
+        dialogo.ShowDialog(this);
+    }
+
+    private void OcultarSeleccionada()
+    {
+        if (_lista.Seleccion is not { } v)
+        {
+            _estado.Text = Textos.T("estado.selecciona");
+            return;
+        }
+        if (!EstaOculta(v.ProcessName)) _config.Ocultas.Add(v.ProcessName);
+        ConfigStore.Guardar(_config);
+        _estado.Text = Textos.F("estado.oculta", v.ProcessName);
+        ReconstruirAjustes(); // el contador de «mostrar ocultas» acaba de cambiar
+        Refrescar();
+    }
+
+    private void MostrarOcultas()
+    {
+        if (_config.Ocultas.Count == 0) return;
+        _config.Ocultas.Clear();
+        ConfigStore.Guardar(_config);
+        _estado.Text = Textos.T("estado.ocultasVaciadas");
+        ReconstruirAjustes();
+        Refrescar();
     }
 
     private void AlternarAjustes()
@@ -838,7 +1173,26 @@ public sealed class MainForm : Form
                 ConfigStore.Guardar(_config);
             })));
 
+        // Exclusiones: esconder la fila seleccionada / recuperar todas las escondidas
+        var botonesLista = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Margin = new Padding(0),
+            BackColor = Color.Transparent,
+        };
+        var ocultar = BotonChico(Textos.T("menu.ocultar"));
+        ocultar.Click += (_, _) => OcultarSeleccionada();
+        botonesLista.Controls.Add(ocultar);
+        var mostrarOcultas = BotonChico(Textos.F("menu.mostrarOcultas", _config.Ocultas.Count));
+        mostrarOcultas.Click += (_, _) => MostrarOcultas();
+        botonesLista.Controls.Add(mostrarOcultas);
+        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.lista"), botonesLista));
+
         _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.hotkey"),
+            new Label { AutoSize = true, Text = "" }, suave: true));
+        _panelAjustes.Controls.Add(FilaAjuste(Textos.T("menu.hotkeyRaton"),
             new Label { AutoSize = true, Text = "" }, suave: true));
 
         _panelAjustes.ResumeLayout();
@@ -960,12 +1314,17 @@ public sealed class MainForm : Form
     {
         // La biblioteca: los favoritos sin ejecutar aparecen al final, apagados
         var visibles = new List<WindowInfo>(ventanas);
-        foreach (string favorito in _config.Favoritos)
-            if (!ventanas.Any(v => v.ProcessName.Equals(favorito, StringComparison.OrdinalIgnoreCase)))
-                visibles.Add(new WindowInfo(IntPtr.Zero, Textos.T("fila.apagada"), favorito, 0));
+        foreach (var favorito in _config.Favoritos)
+            if (!ventanas.Any(v => v.ProcessName.Equals(favorito.Proceso, StringComparison.OrdinalIgnoreCase)))
+                visibles.Add(new WindowInfo(IntPtr.Zero, Textos.T("fila.apagada"), favorito.Proceso, 0));
+        // Las ocultas desaparecen de la lista; el watcher no se entera (usa la enumeración cruda)
+        visibles.RemoveAll(v => EstaOculta(v.ProcessName));
         _lista.Cargar(visibles);
         ActualizarBotonAccion();
     }
+
+    private bool EstaOculta(string proceso) =>
+        _config.Ocultas.Any(o => o.Equals(proceso, StringComparison.OrdinalIgnoreCase));
 
     // Los botones son contextuales según la fila seleccionada
     private void ActualizarBotonAccion()
@@ -974,9 +1333,10 @@ public sealed class MainForm : Form
         _botonAccion.Text = v is not null && v.Hwnd != IntPtr.Zero && BorderlessService.TieneEstadoGuardado(v.Hwnd)
             ? Textos.T("boton.deshacer")
             : Textos.T("boton.aplicar");
-        _botonFavorito.Text = v is not null && EsFavorito(v.ProcessName)
-            ? Textos.T("boton.quitar")
-            : Textos.T("boton.guardar");
+        bool favorita = v is not null && EsFavorito(v.ProcessName);
+        _botonFavorito.Text = favorita ? Textos.T("boton.quitar") : Textos.T("boton.guardar");
+        _botonOpciones.Text = Textos.T("boton.opciones");
+        _botonOpciones.Visible = favorita;
     }
 
     private void AccionPrincipal()

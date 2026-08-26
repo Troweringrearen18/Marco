@@ -12,7 +12,7 @@
     <!-- Icono del exe (Explorer/barra de tareas); regenerable con el script de scratchpad -->
     <ApplicationIcon>icono.ico</ApplicationIcon>
     <!-- Fuente única de la versión: la UI la lee de Application.ProductVersion -->
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
   </PropertyGroup>
 
 </Project>

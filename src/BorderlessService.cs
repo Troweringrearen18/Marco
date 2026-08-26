@@ -43,7 +43,9 @@ public static class BorderlessService
 
     public static bool TieneEstadoGuardado(IntPtr hwnd) => Guardadas.ContainsKey(hwnd.ToInt64());
 
-    public static bool Aplicar(IntPtr hwnd, out string error)
+    public static bool Aplicar(IntPtr hwnd, out string error) => Aplicar(hwnd, null, out error);
+
+    public static bool Aplicar(IntPtr hwnd, Favorito? opciones, out string error)
     {
         error = "";
         if (NativeMethods.IsIconic(hwnd))
@@ -82,19 +84,64 @@ public static class BorderlessService
             return false;
         }
 
-        var mi = new NativeMethods.MONITORINFO { cbSize = Marshal.SizeOf<NativeMethods.MONITORINFO>() };
-        IntPtr monitor = NativeMethods.MonitorFromWindow(hwnd, NativeMethods.MONITOR_DEFAULTTONEAREST);
-        if (!NativeMethods.GetMonitorInfo(monitor, ref mi))
+        const uint flags = NativeMethods.SWP_FRAMECHANGED | NativeMethods.SWP_SHOWWINDOW |
+                           NativeMethods.SWP_NOOWNERZORDER;
+        IntPtr encima = opciones?.SiempreEncima == true ? NativeMethods.HWND_TOPMOST : NativeMethods.HWND_TOP;
+
+        // Solo quitar bordes: ni mover ni estirar, pero SWP_FRAMECHANGED siempre
+        // (sin él, el borde se queda pintado aunque el estilo ya no esté)
+        if (opciones?.Modo == ModoTamano.SoloBordes)
         {
-            error = Textos.T("err.monitor");
-            return false;
+            if (!NativeMethods.SetWindowPos(hwnd, encima, 0, 0, 0, 0,
+                    flags | NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE))
+            {
+                error = Textos.T("err.colocar");
+                return false;
+            }
+            return true;
         }
 
-        // rcMonitor y no rcWork: queremos tapar también la barra de tareas
-        var r = mi.rcMonitor;
-        if (!NativeMethods.SetWindowPos(hwnd, NativeMethods.HWND_TOP, r.Left, r.Top,
-                r.Right - r.Left, r.Bottom - r.Top,
-                NativeMethods.SWP_FRAMECHANGED | NativeMethods.SWP_SHOWWINDOW | NativeMethods.SWP_NOOWNERZORDER))
+        // Monitor objetivo: el elegido por DeviceName (estable entre reinicios) o el más cercano.
+        // Si el monitor elegido ya no existe (desenchufado), caer al más cercano sin fallar.
+        NativeMethods.RECT r;
+        var elegido = string.IsNullOrEmpty(opciones?.MonitorDispositivo)
+            ? null
+            : Screen.AllScreens.FirstOrDefault(s => s.DeviceName == opciones.MonitorDispositivo);
+        if (elegido is not null)
+        {
+            // Screen.Bounds equivale a rcMonitor: tapa también la barra de tareas
+            r = new NativeMethods.RECT
+            {
+                Left = elegido.Bounds.Left,
+                Top = elegido.Bounds.Top,
+                Right = elegido.Bounds.Right,
+                Bottom = elegido.Bounds.Bottom,
+            };
+        }
+        else
+        {
+            var mi = new NativeMethods.MONITORINFO { cbSize = Marshal.SizeOf<NativeMethods.MONITORINFO>() };
+            IntPtr monitor = NativeMethods.MonitorFromWindow(hwnd, NativeMethods.MONITOR_DEFAULTTONEAREST);
+            if (!NativeMethods.GetMonitorInfo(monitor, ref mi))
+            {
+                error = Textos.T("err.monitor");
+                return false;
+            }
+            // rcMonitor y no rcWork: queremos tapar también la barra de tareas
+            r = mi.rcMonitor;
+        }
+
+        int ancho = r.Right - r.Left, alto = r.Bottom - r.Top;
+        int x = r.Left, y = r.Top;
+        if (opciones?.Modo == ModoTamano.Personalizado)
+        {
+            if (opciones.Ancho > 0) ancho = opciones.Ancho;
+            if (opciones.Alto > 0) alto = opciones.Alto;
+            x = opciones.PosX ?? r.Left + (r.Right - r.Left - ancho) / 2;
+            y = opciones.PosY ?? r.Top + (r.Bottom - r.Top - alto) / 2;
+        }
+
+        if (!NativeMethods.SetWindowPos(hwnd, encima, x, y, ancho, alto, flags))
         {
             error = Textos.T("err.colocar");
             return false;
@@ -115,7 +162,12 @@ public static class BorderlessService
         NativeMethods.SetWindowLongPtr(hwnd, NativeMethods.GWL_STYLE, estado.Style);
         NativeMethods.SetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE, estado.ExStyle);
 
-        if (!NativeMethods.SetWindowPos(hwnd, NativeMethods.HWND_TOP,
+        // Reponer el exstyle no basta para quitar el "siempre encima": el estado topmost
+        // real solo cambia vía SetWindowPos con HWND_(NO)TOPMOST según el original
+        IntPtr encima = (estado.ExStyle & NativeMethods.WS_EX_TOPMOST) != 0
+            ? NativeMethods.HWND_TOPMOST
+            : NativeMethods.HWND_NOTOPMOST;
+        if (!NativeMethods.SetWindowPos(hwnd, encima,
                 estado.Left, estado.Top, estado.Width, estado.Height,
                 NativeMethods.SWP_FRAMECHANGED | NativeMethods.SWP_SHOWWINDOW | NativeMethods.SWP_NOOWNERZORDER))
         {

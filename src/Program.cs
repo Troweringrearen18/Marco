@@ -51,12 +51,16 @@ static class Program
             return 2;
         }
 
+        // Si el proceso está en la biblioteca, el CLI aplica sus mismas opciones
+        var favorito = ConfigStore.Cargar().Favoritos
+            .FirstOrDefault(f => f.Proceso.Equals(proceso, StringComparison.OrdinalIgnoreCase));
+
         bool ok = true;
         foreach (var v in ventanas)
         {
             string error;
             bool exito = accion == "--apply"
-                ? BorderlessService.Aplicar(v.Hwnd, out error)
+                ? BorderlessService.Aplicar(v.Hwnd, favorito, out error)
                 : BorderlessService.Restaurar(v.Hwnd, out error);
             Console.WriteLine($"{v.ProcessName} «{v.Title}»: {(exito ? "ok" : error)}");
             ok &= exito;

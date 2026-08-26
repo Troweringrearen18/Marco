@@ -18,6 +18,8 @@ internal static class NativeMethods
     public const long WS_EX_CLIENTEDGE = 0x00000200L;
     public const long WS_EX_STATICEDGE = 0x00020000L;
 
+    public const uint SWP_NOSIZE = 0x0001;
+    public const uint SWP_NOMOVE = 0x0002;
     public const uint SWP_FRAMECHANGED = 0x0020;
     public const uint SWP_SHOWWINDOW = 0x0040;
     public const uint SWP_NOOWNERZORDER = 0x0200;
@@ -27,6 +29,12 @@ internal static class NativeMethods
     public const int SW_RESTORE = 9;
 
     public static readonly IntPtr HWND_TOP = IntPtr.Zero;
+
+    // Día 3: siempre encima por favorito. WS_EX_TOPMOST no se quita reponiendo el
+    // exstyle guardado: hay que rematar con SetWindowPos(HWND_NOTOPMOST)
+    public static readonly IntPtr HWND_TOPMOST = new(-1);
+    public static readonly IntPtr HWND_NOTOPMOST = new(-2);
+    public const long WS_EX_TOPMOST = 0x00000008L;
 
     public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
@@ -156,6 +164,25 @@ internal static class NativeMethods
         IntPtr.Size == 8
             ? SetWindowLongPtr64(hWnd, nIndex, new IntPtr(dwNewLong)).ToInt64()
             : SetWindowLong32(hWnd, nIndex, unchecked((int)dwNewLong));
+
+    // Día 3: bloqueo de ratón a la ventana activa (Ctrl+Alt+L)
+    [DllImport("user32.dll")]
+    public static extern bool ClipCursor(ref RECT lpRect);
+
+    [DllImport("user32.dll")]
+    public static extern bool ClipCursor(IntPtr lpRect); // IntPtr.Zero = liberar el cursor
+
+    [DllImport("user32.dll")]
+    public static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll")]
+    public static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct POINT
+    {
+        public int X, Y;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT
