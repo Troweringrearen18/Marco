@@ -4,7 +4,7 @@ A desktop utility for **Windows 10/11** that forces windowed games into **border
 
 A working replacement for *Borderless Gaming* (Steam), which stopped working properly after several updates. It's called **Marco** because that's exactly what it removes.
 
-> Windows 10/11 · .NET 8 · WinForms · License pending *(see [License](#license))*
+> Windows 10/11 · .NET 8 · WinForms · GPL v3 *(see [License](#license))*
 
 <!-- TODO: screenshot of the main window (drag an image here, e.g. docs/screenshot.png) -->
 
@@ -178,8 +178,7 @@ The translations are our own (not copied from other projects). The less common o
 
 ## License
 
-**To be decided.** *(Pick one and replace this section — suggestion: MIT, the same license family as classic Borderless Gaming, which served as a behaviour reference.)*
+GPL v3 — see [LICENSE](LICENSE) for details.
 
-Marco is **original code written from scratch**. [Borderless-Gaming](https://github.com/Codeusa/Borderless-Gaming) and its classic version [andrewmd5/Borderless-Gaming](https://github.com/andrewmd5/Borderless-Gaming) were used **only as a behaviour reference** for edge cases: **no code or translations were copied** from them (their license has changed over the years and we don't want to depend on it).
+Marco is **original code written from scratch**. [Borderless-Gaming](https://github.com/Codeusa/Borderless-Gaming) and its classic version [andrewmd5/Borderless-Gaming](https://github.com/andrewmd5/Borderless-Gaming) (both GPL-2.0) were used **only as a behaviour reference** for edge cases: **no code or translations were copied** from them.
 
-<!-- TODO: add a LICENSE file and link it here, e.g. [MIT](LICENSE) -->
