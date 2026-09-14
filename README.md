@@ -28,7 +28,7 @@ Contextual "Options" button → themed dialog, per favourite:
 - **Target monitor** by `DeviceName` (stable across reboots; if the monitor is gone, it falls back to the nearest one).
 - **Always on top** (topmost, undone on restore).
 - **Mute audio in the background** (WASAPI per pid, implemented by hand with no NuGet).
-- **Delay in seconds** before the first apply (for s that reconfigure themselves on startup).
+- **Delay in seconds** before the first apply (for games that reconfigure themselves on startup).
 
 Watcher, CLI, button/double-click and hotkey all apply **the same** options.
 
