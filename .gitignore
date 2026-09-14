@@ -4,3 +4,6 @@ obj/
 .vs/
 /Marco.exe
 /Marco.pdb
+
+# Notas privadas de desarrollo: no se publican
+/CLAUDE.md
