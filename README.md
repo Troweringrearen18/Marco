@@ -54,12 +54,19 @@ Watcher, CLI, button/double-click and hotkey all apply **the same** options.
 Made for scripts and for testing without touching the GUI (the CLI is exempt from the single-instance lock):
 
 ```powershell
-# Run from the root of the repo, using the published exe or the build output:
-$exe = '.\Marco.exe'                          # published (see Portable publish below)
-# $exe = 'src\bin\Debug\net8.0-windows\Marco.exe'   # local build (dotnet build src)
+# From a fresh clone (no setup needed): run the project, with `--` before the args
+dotnet run --project src -- --apply notepad     # borderless on every window of that process
+dotnet run --project src -- --restore notepad   # undo (works even if the apply came from another process)
+```
 
-& $exe --apply notepad     # borderless on every window of that process
-& $exe --restore notepad   # undo (works even if the apply came from another process)
+Once you have an exe, call it directly — same arguments:
+
+```powershell
+$exe = '.\Marco.exe'                                # published (see Portable publish below)
+# $exe = 'src\bin\Debug\net8.0-windows\Marco.exe'   # after `dotnet build src`
+
+& $exe --apply notepad
+& $exe --restore notepad
 ```
 
 - Prints one line per window processed and applies the **favourite's options** if the process is in the library.
