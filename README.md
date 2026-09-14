@@ -28,7 +28,7 @@ Contextual "Options" button → themed dialog, per favourite:
 - **Target monitor** by `DeviceName` (stable across reboots; if the monitor is gone, it falls back to the nearest one).
 - **Always on top** (topmost, undone on restore).
 - **Mute audio in the background** (WASAPI per pid, implemented by hand with no NuGet).
-- **Delay in seconds** before the first apply (for games that reconfigure themselves on startup).
+- **Delay in seconds** before the first apply (for s that reconfigure themselves on startup).
 
 Watcher, CLI, button/double-click and hotkey all apply **the same** options.
 
@@ -163,7 +163,7 @@ The translations are our own (not copied from other projects). The less common o
 **v1.0.0** — complete and distributable.
 
 **Known outstanding items** (nothing blocks day-to-day use):
-- Test **background muting** and **mouse locking inside a real game** (verified with a harness and Notepad, not yet in-game).
+- Test **background muting** and **mouse locking inside a real game**.
 - Review the Help/Options dialog layout at **≥ 125 % scaling**.
 - Notify in the UI when the **hotkey fallback** kicks in at startup (today it silently falls back to the default).
 - Optional code signing to remove the SmartScreen warning.
