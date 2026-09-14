@@ -169,7 +169,6 @@ The translations are our own (not copied from other projects). The less common o
 - Review the Help/Options dialog layout at **≥ 125 % scaling**.
 - Notify in the UI when the **hotkey fallback** kicks in at startup (today it silently falls back to the default).
 - Optional code signing to remove the SmartScreen warning.
-- Rename the repo folder `SinBordes` → `Marco`.
 
 **Deliberately out of scope**:
 - **Linux**: on Wayland the compositor won't let an external app manipulate other windows; on X11 it would be 100 % different code with no way to test it. Besides, Proton and Linux WMs already offer native borderless.
